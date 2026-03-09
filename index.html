@@ -1539,13 +1539,13 @@ async function loadAdmin() {
   const [usersRes, postsRes, starsRes, flagsRes, pendingRes] = await Promise.all([
     sb.from('profiles').select('id', { count: 'exact', head: true }).eq('is_approved', true),
     sb.from('recognitions').select('id', { count: 'exact', head: true }),
-    sb.from('recognitions').select('stars'),
+    sb.from('profiles').select('total_stars').eq('is_approved', true),
     sb.from('gaming_flags').select('*').eq('is_resolved', false).order('created_at', { ascending: false }),
     sb.from('profiles').select('*').eq('is_approved', false).order('joined_at', { ascending: false }),
   ]);
   document.getElementById('adm-users').textContent = usersRes.count || 0;
   document.getElementById('adm-posts').textContent = postsRes.count || 0;
-  const totalStars = (starsRes.data || []).reduce((s, r) => s + r.stars, 0);
+  const totalStars = (starsRes.data || []).reduce((s, r) => s + (r.total_stars || 0), 0);
   document.getElementById('adm-stars').textContent = totalStars;
   document.getElementById('adm-flags').textContent = flagsRes.data?.length || 0;
 
@@ -2719,7 +2719,7 @@ function storeItemHTML(r, bal) {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto">
         <div style="font-size:20px;font-weight:900;color:${canAfford?'var(--gold)':'var(--text3)'}">${r.points_required}★</div>
         <button class="btn${canAfford?'':' btn-outline'}" style="font-size:11px;padding:7px 14px;${canAfford?'':'opacity:.6;cursor:not-allowed'}"
-          onclick="${canAfford ? `confirmRedeem('${r.id}','${esc(r.name)}',${r.points_required})` : ''}">
+          onclick="${canAfford ? `confirmRedeem('${r.id}',${r.points_required})` : ''}">
           ${canAfford ? 'Đổi →' : 'Chưa đủ ★'}
         </button>
       </div>
@@ -2727,8 +2727,10 @@ function storeItemHTML(r, bal) {
   </div>`;
 }
 
-function confirmRedeem(rewardId, rewardName, cost) {
-  if (!confirm(`Đổi "${rewardName}" với giá ${cost}★?\n\nVoucher sẽ được tạo ngay sau khi xác nhận.`)) return;
+function confirmRedeem(rewardId, cost) {
+  const r = storeRewards.find(x => x.id === rewardId || x.id === String(rewardId));
+  const name = r ? r.name : 'phần thưởng này';
+  if (!confirm('Đổi "' + name + '" với giá ' + cost + '★?\n\nVoucher sẽ được tạo ngay sau khi xác nhận.')) return;
   doRedeem(rewardId);
 }
 
