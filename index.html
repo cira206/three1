@@ -787,13 +787,13 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true }
 });
 
-// Load logo ngay khi trang mở — trước khi auth
-(async () => {
+// Load logo ngay khi trang mở — chờ DOM sẵn sàng
+document.addEventListener('DOMContentLoaded', async () => {
   try {
     const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
     if (data?.value) applyLogoEarly(data.value);
   } catch(e) {}
-})();
+});
 
 function applyLogoEarly(url) {
   if (!url) return;
