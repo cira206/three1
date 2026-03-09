@@ -74,7 +74,7 @@ body{font-family:var(--F);background:var(--bg);color:var(--text);min-height:100v
 .upts-s { margin-left:auto; font-size:12px; font-weight:800; color:var(--gold); }
 
 .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-.topbar { height:56px; border-bottom:1.5px solid var(--black); display:flex; align-items:center; padding:0 24px; gap:10px; flex-shrink:0; background:#FFF; }
+.topbar { height:56px; border-bottom:1.5px solid var(--black); display:flex; align-items:center; padding:0 24px; gap:10px; flex-shrink:0; background:#FFF; position:relative; }
 .topbar-title { font-size:13px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
 .tr { margin-left:auto; display:flex; gap:8px; align-items:center; }
 .live-pill { display:flex; align-items:center; gap:5px; border:1.5px solid var(--border-soft); padding:4px 10px; font-size:11px; color:var(--text3); }
@@ -252,6 +252,16 @@ textarea.inf { resize:none; min-height:74px; }
 .ms2 { font-size:12px; color:var(--text3); margin-bottom:18px; }
 .mf { display:flex; gap:7px; justify-content:flex-end; margin-top:16px; }
 
+/* ── NOTIFICATION ── */
+.notif-item { padding:12px 14px; border-bottom:1px solid var(--border-soft); cursor:pointer; transition:.12s; display:flex; gap:10px; align-items:flex-start; }
+.notif-item:hover { background:var(--bg2); }
+.notif-item.unread { background:rgba(168,132,44,.06); border-left:3px solid var(--gold); }
+.notif-icon { font-size:18px; flex-shrink:0; margin-top:1px; }
+.notif-body { flex:1; }
+.notif-title { font-size:12px; font-weight:700; margin-bottom:2px; }
+.notif-sub { font-size:11px; color:var(--text3); line-height:1.5; }
+.notif-time { font-size:10px; color:var(--text3); margin-top:3px; }
+
 /* ── TOAST ── */
 .toast { display:none; position:fixed; bottom:22px; right:22px; background:var(--black); color:#FFF; border-left:4px solid var(--gold); padding:13px 18px; font-size:13px; font-weight:600; align-items:center; gap:7px; z-index:200; max-width:310px; }
 
@@ -360,7 +370,7 @@ textarea.inf { resize:none; min-height:74px; }
         <line x1="23.5" y1="27" x2="23.5" y2="23.5" stroke="white" stroke-width="1.1" stroke-linecap="round"/>
         <circle cx="23.5" cy="27" r="0.7" fill="white"/>
       </svg>
-      <div class="brand-name">Three<br>O'Clock</div>
+      <div class="brand-name" style="white-space:nowrap;font-size:11px">THREE O'CLOCK</div>
     </div>
     <div class="nav">
       <div class="ng">Main</div>
@@ -389,9 +399,18 @@ textarea.inf { resize:none; min-height:74px; }
       <div class="topbar-title" id="page-title">Trang Chủ</div>
       <div class="live-pill"><div class="ldot"></div><span id="online-count">--</span> online</div>
       <div class="tr">
+        <div id="notif-btn" onclick="toggleNotifPanel()" style="display:none;position:relative;cursor:pointer;padding:6px 10px;border:1.5px solid var(--black);background:#FFF;margin-right:4px">
+          <span style="font-size:14px">🔔</span>
+          <span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--red);color:#FFF;font-size:9px;font-weight:800;padding:2px 5px;min-width:16px;text-align:center">0</span>
+        </div>
         <button class="btn btn-outline" onclick="openGiveModal()">★ Tặng sao</button>
         <button class="btn btn-black" onclick="openCompose()">+ Đăng cảm ơn</button>
         <button class="btn btn-outline" onclick="doLogout()">Đăng xuất</button>
+      </div>
+      <!-- NOTIFICATION PANEL -->
+      <div id="notif-panel" style="display:none;position:absolute;top:57px;right:16px;width:340px;background:#FFF;border:2px solid var(--black);z-index:90;max-height:420px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.12)">
+        <div style="padding:12px 14px;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1.5px solid var(--black);display:flex;justify-content:space-between;align-items:center"><span>Thông báo</span><span onclick="clearNotifs()" style="cursor:pointer;color:var(--gold);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:none">Xóa tất cả</span></div>
+        <div id="notif-list"><div style="padding:20px;text-align:center;font-size:12px;color:var(--text3)">Chưa có thông báo</div></div>
       </div>
     </header>
 
@@ -535,6 +554,45 @@ textarea.inf { resize:none; min-height:74px; }
       </div>
     </div>
 
+    <!-- EMPLOYEE PROFILE MODAL -->
+    <div class="modal-bg" id="emp-modal">
+      <div class="modal-box" style="width:520px">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+          <div class="av" id="emp-av" style="width:52px;height:52px;font-size:18px;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div id="emp-name" style="font-size:17px;font-weight:800;letter-spacing:.06em;text-transform:uppercase"></div>
+            <div id="emp-meta" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
+          </div>
+          <div style="text-align:right">
+            <div id="emp-stars" style="font-size:24px;font-weight:800;color:var(--gold)"></div>
+            <div style="font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase">Tổng sao</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1.5px solid var(--black);margin-bottom:16px">
+          <div style="padding:12px;text-align:center;border-right:1px solid var(--border-soft)">
+            <div id="emp-rank" style="font-size:20px;font-weight:800;color:var(--gold)">—</div>
+            <div style="font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:3px">Rank</div>
+          </div>
+          <div style="padding:12px;text-align:center;border-right:1px solid var(--border-soft)">
+            <div id="emp-posts" style="font-size:20px;font-weight:800">—</div>
+            <div style="font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:3px">Bài đăng</div>
+          </div>
+          <div style="padding:12px;text-align:center">
+            <div id="emp-month" style="font-size:20px;font-weight:800;color:var(--gold)">—</div>
+            <div style="font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:3px">★ Tháng này</div>
+          </div>
+        </div>
+        <div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Email</div>
+        <div id="emp-email" style="font-size:13px;margin-bottom:14px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border-soft)"></div>
+        <div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Lời cảm ơn gần đây</div>
+        <div id="emp-recent" style="max-height:160px;overflow-y:auto"></div>
+        <div class="mf" style="margin-top:16px">
+          <button class="btn btn-outline" onclick="closeEmpModal()">Đóng</button>
+          <button class="btn btn-red" id="emp-delete-btn" onclick="">Xóa tài khoản</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ADMIN -->
     <div class="page" id="page-admin">
       <div class="sh"><div><div class="sh-t">Admin Panel</div><div class="sh-s">Quản lý hệ thống</div></div></div>
@@ -544,7 +602,19 @@ textarea.inf { resize:none; min-height:74px; }
         <div class="sb hl"><div class="sbl">Tổng ★ phát ra</div><div class="sbv" id="adm-stars">—</div><div class="sbi">★</div></div>
         <div class="sb" style="border-bottom:3px solid var(--red)"><div class="sbl">Cảnh báo</div><div class="sbv" style="color:var(--red)" id="adm-flags">—</div><div class="sbi">⚠</div></div>
       </div>
+      <!-- TABS -->
+      <div class="tabs" style="margin-bottom:18px">
+        <div class="tab active" onclick="adminTab('pending',this)">⏳ Chờ duyệt</div>
+        <div class="tab" onclick="adminTab('employees',this)">👥 Nhân viên</div>
+        <div class="tab" onclick="adminTab('branches',this)">🏪 Chi nhánh</div>
+        <div class="tab" onclick="adminTab('logo',this)">🖼 Logo</div>
+        <div class="tab" onclick="adminTab('admins',this)">★ Admin</div>
+        <div class="tab" onclick="adminTab('flags',this)">⚠ Cảnh báo</div>
+        <div class="tab" onclick="adminTab('history',this)">📋 Lịch sử</div>
+      </div>
+
       <!-- PENDING USERS -->
+      <div id="admin-section-pending">
       <div class="card" style="margin-bottom:16px">
         <div class="ct">⏳ Tài khoản chờ duyệt</div>
         <div id="pending-users">
@@ -552,6 +622,8 @@ textarea.inf { resize:none; min-height:74px; }
         </div>
       </div>
 
+      </div>
+      <div id="admin-section-logo" style="display:none">
       <!-- LOGO UPLOAD -->
       <div class="card" style="margin-bottom:16px">
         <div class="ct">🖼 Logo công ty</div>
@@ -565,6 +637,8 @@ textarea.inf { resize:none; min-height:74px; }
         </div>
       </div>
 
+      </div>
+      <div id="admin-section-branches" style="display:none">
       <!-- BRANCH MANAGEMENT -->
       <div class="card" style="margin-bottom:16px">
         <div class="ct">🏪 Quản lý chi nhánh</div>
@@ -578,6 +652,8 @@ textarea.inf { resize:none; min-height:74px; }
         </div>
       </div>
 
+      </div>
+      <div id="admin-section-admins" style="display:none">
       <!-- PROMOTE ADMIN -->
       <div class="card" style="margin-bottom:16px">
         <div class="ct">★ Quản lý Admin</div>
@@ -586,6 +662,8 @@ textarea.inf { resize:none; min-height:74px; }
         </div>
       </div>
 
+      </div>
+      <div id="admin-section-flags" style="display:none">
       <div class="card" style="margin-bottom:16px">
         <div class="ct">⚠ Anti-Gaming Warnings</div>
         <div id="flags-list">
@@ -593,7 +671,25 @@ textarea.inf { resize:none; min-height:74px; }
         </div>
       </div>
       </div>
-
+      </div>
+      <div id="admin-section-employees" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="ct">👥 Danh sách nhân viên</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input class="inp" id="emp-search" placeholder="Tìm theo tên hoặc email..." style="flex:1;margin-bottom:0" oninput="filterEmployees()">
+            <select class="inp" id="emp-filter-branch" style="width:160px;margin-bottom:0" onchange="filterEmployees()">
+              <option value="">Tất cả chi nhánh</option>
+            </select>
+          </div>
+          <div id="employees-table-wrap" style="overflow-x:auto">
+            <table class="ht" id="employees-table">
+              <thead><tr><th>Nhân viên</th><th>Email</th><th>Chi nhánh</th><th>Bộ phận</th><th>★ Tổng</th><th>Role</th><th></th></tr></thead>
+              <tbody id="employees-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="admin-section-history" style="display:none">
       <div style="border:1.5px solid var(--black);overflow:hidden">
         <div style="padding:11px 14px;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1.5px solid var(--black)">Lịch sử tặng điểm gần đây</div>
         <table class="ht">
@@ -602,6 +698,7 @@ textarea.inf { resize:none; min-height:74px; }
             <tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr>
           </tbody>
         </table>
+      </div>
       </div>
     </div>
 
@@ -751,6 +848,7 @@ async function doRegister() {
 }
 
 async function doLogout() {
+  if (notifChannel) sb.removeChannel(notifChannel);
   if (realtimeChannel) sb.removeChannel(realtimeChannel);
   await sb.auth.signOut();
   currentUser = null; currentProfile = null;
@@ -819,6 +917,9 @@ async function loadApp() {
   // Load data
   loadLogo();
   await Promise.all([loadFeed(), loadQuota(), loadMiniLeaderboard(), loadActiveChallenges(), loadEmployees()]);
+
+  // Setup notifications for admin
+  setupNotifSubscription();
 
   // Realtime subscription
   realtimeChannel = sb.channel('recognitions-feed')
@@ -1229,6 +1330,9 @@ function closeModal() {
 document.getElementById('give-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('give-modal')) closeModal();
 });
+document.getElementById('emp-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('emp-modal')) closeEmpModal();
+});
 
 function selVal(el) {
   el.closest('.vrow').querySelectorAll('.vc').forEach(v => v.classList.remove('sel'));
@@ -1375,6 +1479,346 @@ function toast(msg) {
 function aTab(el) {
   el.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════
+let notifications = [];
+let notifChannel = null;
+
+function toggleNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  const isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    // Mark all as read when opening
+    notifications.forEach(n => n.read = true);
+    saveNotifs();
+    updateNotifBadge();
+  }
+}
+
+// Close panel when clicking outside
+document.addEventListener('click', e => {
+  const btn   = document.getElementById('notif-btn');
+  const panel = document.getElementById('notif-panel');
+  if (panel && btn && !btn.contains(e.target) && !panel.contains(e.target)) {
+    panel.style.display = 'none';
+  }
+});
+
+function saveNotifs() {
+  try { localStorage.setItem('sw_notifs_' + currentUser?.id, JSON.stringify(notifications.slice(0,50))); } catch(e) {}
+}
+
+function loadNotifsFromStorage() {
+  try {
+    const stored = localStorage.getItem('sw_notifs_' + currentUser?.id);
+    if (stored) notifications = JSON.parse(stored);
+  } catch(e) { notifications = []; }
+}
+
+function addNotif(icon, title, sub, action) {
+  const n = { id: Date.now(), icon, title, sub, time: new Date().toISOString(), read: false, action };
+  notifications.unshift(n);
+  saveNotifs();
+  renderNotifs();
+  updateNotifBadge();
+  // Flash bell
+  const btn = document.getElementById('notif-btn');
+  if (btn) { btn.style.background = 'var(--gold-pale)'; setTimeout(() => btn.style.background = '#FFF', 1000); }
+}
+
+function updateNotifBadge() {
+  const unread = notifications.filter(n => !n.read).length;
+  const badge  = document.getElementById('notif-badge');
+  if (!badge) return;
+  if (unread > 0) {
+    badge.style.display = 'block';
+    badge.textContent   = unread > 9 ? '9+' : unread;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function renderNotifs() {
+  const el = document.getElementById('notif-list');
+  if (!el) return;
+  if (!notifications.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3)">Chưa có thông báo</div>';
+    return;
+  }
+  el.innerHTML = notifications.map(n => `
+    <div class="notif-item ${n.read ? '' : 'unread'}" onclick="clickNotif('${n.id}')">
+      <div class="notif-icon">${n.icon}</div>
+      <div class="notif-body">
+        <div class="notif-title">${esc(n.title)}</div>
+        <div class="notif-sub">${esc(n.sub)}</div>
+        <div class="notif-time">${timeAgo(n.time)}</div>
+      </div>
+    </div>`).join('');
+}
+
+function clickNotif(id) {
+  const n = notifications.find(x => String(x.id) === String(id));
+  if (n) { n.read = true; saveNotifs(); updateNotifBadge(); renderNotifs(); }
+  document.getElementById('notif-panel').style.display = 'none';
+  // Navigate to admin pending tab
+  go('admin');
+  setTimeout(() => {
+    const tab = document.querySelector('#page-admin .tab');
+    if (tab) adminTab('pending', tab);
+  }, 300);
+}
+
+function clearNotifs() {
+  notifications = [];
+  saveNotifs();
+  renderNotifs();
+  updateNotifBadge();
+}
+
+function setupNotifSubscription() {
+  if (!currentProfile || currentProfile.role !== 'admin') return;
+
+  // Show bell for admin
+  const btn = document.getElementById('notif-btn');
+  if (btn) btn.style.display = 'flex';
+
+  // Load stored notifications
+  loadNotifsFromStorage();
+  renderNotifs();
+  updateNotifBadge();
+
+  // Realtime: lắng nghe nhân viên đăng ký mới (is_approved = false)
+  notifChannel = sb.channel('admin-notifs')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'profiles',
+      filter: 'is_approved=eq.false'
+    }, payload => {
+      const p = payload.new;
+      addNotif(
+        '👤',
+        'Nhân viên mới đăng ký',
+        `${p.full_name} (${p.email}) · ${p.branch||''} · ${p.department||''} — chờ duyệt`,
+        'pending'
+      );
+      // Also show toast
+      toast(`👤 ${p.full_name} vừa đăng ký — cần duyệt!`);
+    })
+    .subscribe();
+
+  // Check pending count on load
+  checkPendingOnLoad();
+}
+
+async function checkPendingOnLoad() {
+  const { data } = await sb.from('profiles').select('id, full_name, email, branch, department, joined_at').eq('is_approved', false).order('joined_at', { ascending: false });
+  if (!data?.length) return;
+  // Add notification for each pending user not yet notified
+  const existingIds = notifications.map(n => n.sub?.split('(')[1]?.split(')')[0]);
+  data.forEach(p => {
+    if (!existingIds.includes(p.email)) {
+      const n = {
+        id: 'pending_' + p.id,
+        icon: '👤',
+        title: 'Nhân viên chờ duyệt',
+        sub: `${p.full_name} (${p.email}) · ${p.branch||''} · ${p.department||''}`,
+        time: p.joined_at,
+        read: false,
+        action: 'pending'
+      };
+      // Only add if not already there
+      if (!notifications.find(x => x.id === n.id)) {
+        notifications.push(n);
+      }
+    }
+  });
+  notifications.sort((a,b) => new Date(b.time) - new Date(a.time));
+  saveNotifs();
+  renderNotifs();
+  updateNotifBadge();
+}
+
+// ═══════════════════════════════════════════════
+// ADMIN TABS
+// ═══════════════════════════════════════════════
+function adminTab(name, el) {
+  const sections = ['pending','employees','branches','logo','admins','flags','history'];
+  sections.forEach(s => {
+    const el2 = document.getElementById('admin-section-' + s);
+    if (el2) el2.style.display = 'none';
+  });
+  const target = document.getElementById('admin-section-' + name);
+  if (target) target.style.display = 'block';
+  document.querySelectorAll('#page-admin .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  // Lazy load
+  if (name === 'employees') loadEmployeesList();
+  if (name === 'branches')  loadBranches();
+  if (name === 'admins')    loadAdminList();
+  if (name === 'flags')     loadFlags();
+  if (name === 'history')   loadHistory();
+}
+
+// ═══════════════════════════════════════════════
+// EMPLOYEE MANAGEMENT
+// ═══════════════════════════════════════════════
+let allEmployees = [];
+
+async function loadEmployeesList() {
+  const { data } = await sb.from('profiles')
+    .select('*')
+    .eq('is_approved', true)
+    .order('full_name');
+  allEmployees = data || [];
+
+  // Populate branch filter
+  const bf = document.getElementById('emp-filter-branch');
+  if (bf) {
+    const { data: branches } = await sb.from('branches').select('name').order('name');
+    bf.innerHTML = '<option value="">Tất cả chi nhánh</option>' +
+      (branches||[]).map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+  }
+
+  renderEmployeesTable(allEmployees);
+}
+
+function filterEmployees() {
+  const q      = document.getElementById('emp-search')?.value.toLowerCase() || '';
+  const branch = document.getElementById('emp-filter-branch')?.value || '';
+  const filtered = allEmployees.filter(e =>
+    (!q || e.full_name.toLowerCase().includes(q) || e.email.toLowerCase().includes(q)) &&
+    (!branch || e.branch === branch)
+  );
+  renderEmployeesTable(filtered);
+}
+
+function renderEmployeesTable(list) {
+  const tbody = document.getElementById('employees-body');
+  if (!tbody) return;
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">Không tìm thấy nhân viên</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(e => `
+    <tr style="cursor:pointer" onclick="viewEmployee('${e.id}')">
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="av" style="width:28px;height:28px;font-size:10px;background:${strToColor(e.full_name)};color:#FFF;border:none;flex-shrink:0">${e.avatar_text||'?'}</div>
+          <strong>${esc(e.full_name)}</strong>
+        </div>
+      </td>
+      <td style="color:var(--text3);font-size:12px">${esc(e.email)}</td>
+      <td><span style="background:var(--bg2);padding:2px 8px;font-size:11px;font-weight:700;border:1px solid var(--border-soft)">${esc(e.branch||'—')}</span></td>
+      <td style="font-size:12px">${esc(e.department||'—')}</td>
+      <td style="font-weight:800;color:var(--gold)">${e.total_stars||0}★</td>
+      <td><span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;background:${e.role==='admin'?'var(--gold)':'var(--bg2)'};color:${e.role==='admin'?'#FFF':'var(--text2)'};border:1px solid ${e.role==='admin'?'var(--gold)':'var(--border-soft)'}">${e.role}</span></td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-red" style="padding:3px 8px;font-size:10px" onclick="deleteEmployee('${e.id}','${esc(e.full_name)}')">Xóa</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function viewEmployee(uid) {
+  const emp = allEmployees.find(e => e.id === uid);
+  if (!emp) return;
+
+  // Fill modal
+  document.getElementById('emp-av').textContent    = emp.avatar_text || '?';
+  document.getElementById('emp-av').style.background = strToColor(emp.full_name);
+  document.getElementById('emp-av').style.color    = '#FFF';
+  document.getElementById('emp-name').textContent  = emp.full_name;
+  document.getElementById('emp-meta').textContent  = `${emp.branch||'—'} · ${emp.department||'—'} · ${emp.role}`;
+  document.getElementById('emp-email').textContent = emp.email;
+  document.getElementById('emp-stars').textContent = (emp.total_stars||0) + '★';
+  document.getElementById('emp-posts').textContent = emp.post_count||0;
+  document.getElementById('emp-delete-btn').setAttribute('onclick', `deleteEmployee('${uid}','${esc(emp.full_name)}')`);
+
+  // Get rank
+  const { data: lb } = await sb.rpc('get_leaderboard', { p_limit: 200 });
+  const rank = (lb||[]).findIndex(p => p.user_id === uid) + 1;
+  document.getElementById('emp-rank').textContent = rank ? '#' + rank : '#—';
+
+  // Stars this month
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+  const { data: monthRecs } = await sb.from('recognitions')
+    .select('stars').eq('to_user_id', uid).gte('created_at', monthStart.toISOString());
+  const monthStars = (monthRecs||[]).reduce((s,r) => s + r.stars, 0);
+  document.getElementById('emp-month').textContent = monthStars + '★';
+
+  // Recent recognitions
+  const { data: recs } = await sb.from('recognitions')
+    .select('*, from_profile:profiles!from_user_id(full_name)')
+    .eq('to_user_id', uid).order('created_at', { ascending: false }).limit(3);
+  const recEl = document.getElementById('emp-recent');
+  if (!recs?.length) {
+    recEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Chưa có lời cảm ơn nào</div>';
+  } else {
+    recEl.innerHTML = recs.map(r => `
+      <div style="background:var(--bg2);border-left:3px solid var(--gold);padding:8px 11px;margin-bottom:6px;font-size:12px">
+        <div style="font-style:italic;margin-bottom:3px">"${esc(r.message)}"</div>
+        <div style="color:var(--text3);font-size:11px">— ${esc(r.from_profile?.full_name||'?')} · ${'★'.repeat(r.stars)}</div>
+      </div>`).join('');
+  }
+
+  document.getElementById('emp-modal').classList.add('open');
+}
+
+function closeEmpModal() {
+  document.getElementById('emp-modal').classList.remove('open');
+}
+
+async function deleteEmployee(uid, name) {
+  if (!confirm(`Xóa tài khoản "${name}"?\nHành động này không thể hoàn tác!`)) return;
+  await sb.rpc('reject_user', { p_user_id: uid });
+  toast('🗑 Đã xóa tài khoản ' + name);
+  closeEmpModal();
+  loadEmployeesList();
+  loadAdmin();
+}
+
+// ── Split loadAdmin into separate lazy functions ──
+async function loadFlags() {
+  const { data: flagsRes } = await sb.from('gaming_flags').select('*').eq('is_resolved', false).order('created_at', { ascending: false });
+  const flagsEl = document.getElementById('flags-list');
+  if (!flagsEl) return;
+  if (!flagsRes?.length) {
+    flagsEl.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text3);text-align:center">✓ Không có cảnh báo nào</div>';
+  } else {
+    flagsEl.innerHTML = flagsRes.map(f => `
+      <div class="warn">
+        <div class="wi">⚠️</div>
+        <div class="wb">
+          <strong>${f.flag_type === 'circle' ? 'Vòng tròn tặng điểm' : 'Bất thường'}</strong>
+          ${f.details?.description || JSON.stringify(f.details)}
+          <div class="wa">
+            <button class="btn btn-outline" style="padding:4px 9px;font-size:10px" onclick="resolveFlag('${f.id}')">Đánh dấu đã xử lý</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+}
+
+async function loadHistory() {
+  const { data: hist } = await sb
+    .from('recognitions')
+    .select('*, from_profile:profiles!from_user_id(full_name), to_profile:profiles!to_user_id(full_name)')
+    .order('created_at', { ascending: false })
+    .limit(30);
+  const el = document.getElementById('history-body');
+  if (!el) return;
+  el.innerHTML = (hist||[]).map(r => `
+    <tr>
+      <td style="color:var(--text3)">${timeAgo(r.created_at)}</td>
+      <td>${esc(r.from_profile?.full_name||'?')}</td>
+      <td>${esc(r.to_profile?.full_name||'?')}</td>
+      <td style="font-weight:800;color:var(--gold)">${'★'.repeat(r.stars)}</td>
+      <td>${r.value_tag}</td>
+    </tr>`).join('');
 }
 
 // ═══════════════════════════════════════════════
