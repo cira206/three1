@@ -375,8 +375,10 @@ textarea.inf { resize:none; min-height:74px; }
       <div class="ni" onclick="go('leaderboard')">◆ &nbsp;Bảng xếp hạng</div>
       <div class="ni" onclick="go('wall')">◉ &nbsp;Culture Wall</div>
       <div class="ni" onclick="go('challenges')">◎ &nbsp;Thử thách</div>
+      <div class="ni" onclick="go('store')">◇ &nbsp;Đổi quà</div>
       <div class="ng" style="margin-top:10px">Personal</div>
       <div class="ni" onclick="go('profile')">○ &nbsp;Hồ sơ của tôi</div>
+      <div class="ni" onclick="go('aireport')">◈ &nbsp;AI Báo cáo</div>
       <div class="ng" style="margin-top:10px" id="admin-nav-group" style="display:none">Admin</div>
       <div class="ni" id="admin-nav-item" onclick="go('admin')" style="display:none">▪ &nbsp;Admin Panel</div>
     </div>
@@ -521,6 +523,98 @@ textarea.inf { resize:none; min-height:74px; }
       </div>
     </div>
 
+
+    <!-- ══ STORE - CỬA HÀNG ĐỔI QUÀ ══ -->
+    <div class="page" id="page-store">
+      <div class="sh">
+        <div>
+          <div class="sh-t">Cửa Hàng Đổi Quà</div>
+          <div class="sh-s">Dùng ★ để đổi phần thưởng thật</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="border:1.5px solid var(--black);padding:6px 16px;font-size:13px;line-height:1.4">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)">Điểm đổi quà</div>
+            <div style="font-size:18px;font-weight:900;color:var(--gold)" id="store-balance">0★</div>
+          </div>
+          <div style="border:1.5px solid var(--border-soft);padding:6px 16px;font-size:13px;line-height:1.4">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)">Điểm danh tiếng</div>
+            <div style="font-size:18px;font-weight:900" id="store-reputation">0★</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs lọc danh mục -->
+      <div style="display:flex;gap:0;border-bottom:1.5px solid var(--black);margin-bottom:20px">
+        <button id="stab-all"     class="stab active" onclick="filterStore('all')"          style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2.5px solid var(--black);background:transparent;cursor:pointer">TẤT CẢ</button>
+        <button id="stab-drink"   class="stab"        onclick="filterStore('drink_voucher')" style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer">☕ ĐỒ UỐNG</button>
+        <button id="stab-merch"   class="stab"        onclick="filterStore('merchandise')"  style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer">🎁 TẶNG PHẨM</button>
+        <button id="stab-priv"    class="stab"        onclick="filterStore('privilege')"    style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer">⭐ QUYỀN LỢI</button>
+        <button id="stab-history" class="stab"        onclick="filterStore('history')"      style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer;margin-left:auto">📋 LỊCH SỬ ĐỔI</button>
+      </div>
+
+      <!-- Store grid -->
+      <div id="store-view-main">
+        <div id="store-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- History view -->
+      <div id="store-view-history" style="display:none">
+        <div id="redemption-history-list">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ AI BÁO CÁO ══ -->
+    <div class="page" id="page-aireport">
+      <div class="sh">
+        <div>
+          <div class="sh-t">AI Báo Cáo</div>
+          <div class="sh-s">Phân tích văn hóa team bằng AI</div>
+        </div>
+        <button class="btn" onclick="generateAIReport()" id="btn-gen-report" style="font-size:12px;padding:8px 16px">◈ Tạo báo cáo mới</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px">
+        <div style="border:1.5px solid var(--black);padding:16px;text-align:center">
+          <div id="ai-stat-recogs" style="font-size:28px;font-weight:900">-</div>
+          <div style="font-size:10px;letter-spacing:.1em;color:var(--text3);margin-top:3px">BÀI ĐĂNG / TUẦN</div>
+        </div>
+        <div style="border:1.5px solid var(--black);padding:16px;text-align:center">
+          <div id="ai-stat-stars" style="font-size:28px;font-weight:900">-</div>
+          <div style="font-size:10px;letter-spacing:.1em;color:var(--text3);margin-top:3px">★ TẶNG / TUẦN</div>
+        </div>
+        <div style="border:1.5px solid var(--black);padding:16px;text-align:center">
+          <div id="ai-stat-active" style="font-size:28px;font-weight:900">-</div>
+          <div style="font-size:10px;letter-spacing:.1em;color:var(--text3);margin-top:3px">NHÂN VIÊN ACTIVE</div>
+        </div>
+        <div style="border:1.5px solid var(--black);padding:16px;text-align:center">
+          <div id="ai-stat-mood" style="font-size:28px;font-weight:900">-</div>
+          <div style="font-size:10px;letter-spacing:.1em;color:var(--text3);margin-top:3px">CHỈ SỐ VĂN HÓA</div>
+        </div>
+      </div>
+      <div style="border:1.5px solid var(--black);padding:22px;margin-bottom:18px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px">◈ Phân Tích AI</div>
+        <div id="ai-report-content" style="font-size:13px;line-height:1.8;color:var(--text2)">
+          <div style="text-align:center;padding:40px 0;color:var(--text3)">
+            <div style="font-size:36px;margin-bottom:10px">◈</div>
+            <div style="font-size:13px">Nhấn "Tạo báo cáo mới" để AI phân tích văn hóa team</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div style="border:1.5px solid var(--border-soft);padding:16px">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.1em;margin-bottom:12px">TOP NGƯỜI NHẬN NHIỀU ★ NHẤT</div>
+          <div id="ai-top-receivers" style="font-size:12px;color:var(--text3)">-</div>
+        </div>
+        <div style="border:1.5px solid var(--border-soft);padding:16px">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.1em;margin-bottom:12px">HOẠT ĐỘNG THEO PHÒNG BAN</div>
+          <div id="ai-dept-breakdown" style="font-size:12px;color:var(--text3)">-</div>
+        </div>
+      </div>
+    </div>
+
     <!-- PROFILE -->
     <div class="page" id="page-profile">
       <div class="prof-banner">
@@ -531,9 +625,33 @@ textarea.inf { resize:none; min-height:74px; }
           <div class="brow" id="prof-badges"></div>
         </div>
         <div class="profnums">
-          <div><div class="pnv" id="prof-stars">0</div><div class="pnl">Tổng ★</div></div>
+          <div><div class="pnv" id="prof-stars">0</div><div class="pnl">Sao nhận</div></div>
+          <div><div class="pnv" id="prof-given">0</div><div class="pnl">Sao tặng</div></div>
           <div><div class="pnv" id="prof-posts">0</div><div class="pnl">Bài đăng</div></div>
           <div><div class="pnv" id="prof-rank">#—</div><div class="pnl">Rank</div></div>
+        </div>
+      </div>
+      <!-- Level + Points card -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:14px">
+        <div style="border:1.5px solid var(--black);padding:16px;text-align:center">
+          <div id="prof-level-icon" style="font-size:28px;margin-bottom:4px">🥉</div>
+          <div id="prof-level-name" style="font-size:13px;font-weight:800;letter-spacing:.06em">BRONZE</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">Level</div>
+          <div style="margin-top:8px;height:4px;background:var(--bg2);border-radius:2px;overflow:hidden">
+            <div id="prof-level-bar" style="height:100%;background:var(--gold);border-radius:2px;transition:.4s;width:0%"></div>
+          </div>
+          <div id="prof-level-progress" style="font-size:10px;color:var(--text3);margin-top:4px">0 / 50</div>
+        </div>
+        <div style="border:1.5px solid var(--border-soft);padding:16px;text-align:center">
+          <div id="prof-reputation" style="font-size:26px;font-weight:900;color:var(--gold)">0</div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-top:4px">Reputation Points</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">Dùng cho rank & leaderboard</div>
+        </div>
+        <div style="border:1.5px solid var(--border-soft);padding:16px;text-align:center">
+          <div id="prof-redeemable" style="font-size:26px;font-weight:900;color:var(--black)">0</div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-top:4px">Redeemable Points</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">Dùng để đổi quà</div>
+          <button class="btn btn-outline" onclick="go('store')" style="font-size:10px;padding:4px 10px;margin-top:8px">Đổi quà →</button>
         </div>
       </div>
       <div class="card" style="margin-top:14px">
@@ -1110,7 +1228,7 @@ function go(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + id).classList.add('active');
-  const T = { feed:'Trang Chủ', leaderboard:'Bảng Xếp Hạng', wall:'Culture Wall', challenges:'Thử Thách', profile:'Hồ Sơ Của Tôi', admin:'Admin Panel' };
+  const T = { feed:'Trang Chủ', leaderboard:'Bảng Xếp Hạng', wall:'Culture Wall', challenges:'Thử Thách', store:'Cửa Hàng Đổi Quà', aireport:'AI Báo Cáo', profile:'Hồ Sơ Của Tôi', admin:'Admin Panel' };
   document.getElementById('page-title').textContent = T[id] || id;
   document.querySelectorAll('.ni').forEach(n => { if (n.getAttribute('onclick')?.includes("'"+id+"'")) n.classList.add('active'); });
 
@@ -1120,6 +1238,8 @@ function go(id) {
   if (id === 'challenges')  loadChallenges();
   if (id === 'profile')     loadProfile();
   if (id === 'admin')       loadAdmin();
+  if (id === 'store')       loadStore();
+  if (id === 'aireport')    loadAIReport();
 }
 
 // ═══════════════════════════════════════════════
@@ -1368,8 +1488,19 @@ async function loadProfile() {
   document.getElementById('prof-av').style.background = strToColor(currentProfile.full_name);
   document.getElementById('prof-name').textContent = currentProfile.full_name;
   document.getElementById('prof-dept').textContent = `${currentProfile.department} · Từ ${new Date(currentProfile.joined_at).getFullYear()}`;
-  document.getElementById('prof-stars').textContent = currentProfile.total_stars;
-  document.getElementById('prof-posts').textContent = currentProfile.post_count;
+  const totalStars = currentProfile.total_stars || 0;
+  const repPoints  = currentProfile.reputation_points  ?? totalStars;
+  const redPoints  = currentProfile.redeemable_points  ?? totalStars;
+  const givenStars = currentProfile.total_given ?? 0;
+  document.getElementById('prof-stars').textContent  = totalStars;
+  document.getElementById('prof-given').textContent  = givenStars;
+  document.getElementById('prof-posts').textContent  = currentProfile.post_count;
+  // Level & dual points
+  if (document.getElementById('prof-reputation')) {
+    document.getElementById('prof-reputation').textContent = repPoints;
+    document.getElementById('prof-redeemable').textContent = redPoints;
+    renderLevelUI(repPoints);
+  }
 
   // My rank
   const { data: lb } = await sb.rpc('get_leaderboard', { p_limit: 100 });
@@ -1436,7 +1567,7 @@ async function loadAdmin() {
             <div style="font-size:11px;color:var(--text3)">${esc(u.email)} · ${esc(u.department)}</div>
           </div>
           <div style="display:flex;gap:6px">
-            <button class="btn btn-black" style="padding:5px 11px;font-size:10px" onclick="approveUser('${u.id}','${esc(u.full_name)}')">✓ Duyệt</button>
+            <button class="btn btn-black" style="padding:5px 11px;font-size:10px" onclick="approveUser('${u.id}','${esc(u.full_name)}','${esc(u.email)}')">✓ Duyệt</button>
             <button class="btn btn-red" style="padding:5px 11px;font-size:10px" onclick="rejectUser('${u.id}','${esc(u.full_name)}')">✗ Từ chối</button>
             <button class="btn btn-outline" style="padding:5px 11px;font-size:10px" onclick="promoteAdmin('${u.id}','${esc(u.full_name)}')">★ Admin</button>
           </div>
@@ -2182,10 +2313,90 @@ async function deleteBranch(id, name) {
 // ═══════════════════════════════════════════════
 // ADMIN: APPROVE / REJECT / PROMOTE / LOGO
 // ═══════════════════════════════════════════════
-async function approveUser(uid, name) {
+async function sendApprovalEmail(email, name) {
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer re_TC5hv3hU_6r1tY1rYdf1AyUW12Fya79xA',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'StarWork <noreply@threeoclock.vn>',
+        to: [email],
+        subject: '🎉 Tài khoản StarWork của bạn đã được duyệt!',
+        html: `<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#F7F5F2;font-family:'Helvetica Neue',Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:2px solid #0A0A0A">
+        <!-- Header -->
+        <tr><td style="background:#0A0A0A;padding:28px 36px;text-align:center">
+          <div style="color:#FFFFFF;font-size:13px;font-weight:800;letter-spacing:.2em;text-transform:uppercase">THREE O'CLOCK</div>
+          <div style="color:#A8842C;font-size:11px;font-weight:600;letter-spacing:.15em;margin-top:4px">STARWORK PLATFORM</div>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:36px 36px 28px">
+          <div style="font-size:22px;font-weight:800;color:#0A0A0A;margin-bottom:6px">Chào mừng, ${name}! 🎉</div>
+          <div style="width:40px;height:3px;background:#A8842C;margin-bottom:22px"></div>
+          <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 18px">
+            Tài khoản <strong>StarWork</strong> của bạn tại <strong>THREE O'CLOCK</strong> đã được Admin duyệt thành công!
+          </p>
+          <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 28px">
+            Từ bây giờ bạn có thể đăng nhập để ghi nhận và cảm ơn đồng đội, theo dõi bảng xếp hạng, và tham gia vào văn hóa doanh nghiệp của chúng ta.
+          </p>
+          <div style="text-align:center;margin:28px 0">
+            <a href="https://threeoclock.vercel.app" style="background:#0A0A0A;color:#FFFFFF;padding:14px 32px;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;display:inline-block">
+              Đăng nhập ngay →
+            </a>
+          </div>
+          <div style="background:#F7F5F2;border-left:3px solid #A8842C;padding:14px 16px;margin-top:10px">
+            <div style="font-size:11px;font-weight:800;color:#A8842C;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">Tài khoản đăng nhập</div>
+            <div style="font-size:13px;color:#0A0A0A;font-weight:600">${email}</div>
+          </div>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="background:#F7F5F2;border-top:1.5px solid #D8D0C4;padding:18px 36px;text-align:center">
+          <div style="font-size:11px;color:#9A9490;letter-spacing:.08em">THREE O'CLOCK · StarWork Platform</div>
+          <div style="font-size:10px;color:#C0BDB9;margin-top:4px">Email này được gửi tự động, vui lòng không reply.</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+      })
+    });
+    const result = await res.json();
+    if (result.id) {
+      console.log('✅ Email gửi thành công:', result.id);
+      return true;
+    } else {
+      console.error('❌ Resend error:', result);
+      return false;
+    }
+  } catch(e) {
+    console.error('❌ Email error:', e);
+    return false;
+  }
+}
+
+async function approveUser(uid, name, email) {
   const { data } = await sb.rpc('approve_user', { p_user_id: uid });
   if (data?.error) { toast('❌ ' + data.error); return; }
-  toast('✅ Đã duyệt tài khoản ' + name);
+  // Gửi email thông báo
+  if (email) {
+    const sent = await sendApprovalEmail(email, name);
+    if (sent) {
+      toast('✅ Đã duyệt ' + name + ' · Email thông báo đã gửi!');
+    } else {
+      toast('✅ Đã duyệt ' + name + ' · (Lỗi gửi email)');
+    }
+  } else {
+    toast('✅ Đã duyệt tài khoản ' + name);
+  }
   loadAdmin();
 }
 
@@ -2384,6 +2595,327 @@ async function changePassword() {
     btn.disabled = false; btn.textContent = 'Đổi mật khẩu →';
     err.textContent = 'Lỗi kết nối, vui lòng thử lại'; err.style.display='block';
   }
+}
+
+// ═══════════════════════════════════════════════
+// LEVEL SYSTEM
+// ═══════════════════════════════════════════════
+const LEVELS = [
+  { name:'Bronze',  icon:'🥉', min:0,   max:49,   next:50  },
+  { name:'Silver',  icon:'🥈', min:50,  max:149,  next:150 },
+  { name:'Gold',    icon:'🥇', min:150, max:299,  next:300 },
+  { name:'Diamond', icon:'💎', min:300, max:599,  next:600 },
+  { name:'Legend',  icon:'👑', min:600, max:Infinity, next:null }
+];
+
+function getUserLevel(pts) {
+  return LEVELS.find(l => pts >= l.min && pts <= l.max) || LEVELS[0];
+}
+
+function renderLevelUI(pts) {
+  const lv = getUserLevel(pts);
+  document.getElementById('prof-level-icon').textContent = lv.icon;
+  document.getElementById('prof-level-name').textContent = lv.name.toUpperCase();
+  const pct = lv.next ? Math.min(100, Math.round((pts - lv.min) / (lv.next - lv.min) * 100)) : 100;
+  document.getElementById('prof-level-bar').style.width = pct + '%';
+  document.getElementById('prof-level-progress').textContent = lv.next ? `${pts} / ${lv.next}` : 'MAX LEVEL';
+}
+
+// ═══════════════════════════════════════════════
+// STORE — CỬA HÀNG ĐỔI QUÀ
+// ═══════════════════════════════════════════════
+let storeRewards = [];
+let storeCurrentFilter = 'all';
+
+async function loadStore() {
+  const bal = currentProfile?.redeemable_points ?? currentProfile?.total_stars ?? 0;
+  const rep = currentProfile?.reputation_points  ?? currentProfile?.total_stars ?? 0;
+  document.getElementById('store-balance').textContent   = bal + '★';
+  document.getElementById('store-reputation').textContent = rep + '★';
+
+  // Load rewards từ Supabase
+  const { data, error } = await sb.from('rewards').select('*').eq('is_active', true).order('points_required');
+  if (error || !data?.length) {
+    // Fallback hardcoded nếu chưa chạy SQL patch
+    storeRewards = [
+      { id:'r1', name:'Voucher Free Trà Cam Xí Muội',    description:'1 ly Trà Cam Xí Muội miễn phí',          category:'drink_voucher', points_required:50,  expiry_days:7,    emoji:'🍊' },
+      { id:'r2', name:'Voucher Free Trà Quýt Quýt',      description:'1 ly Trà Quýt Quýt miễn phí',            category:'drink_voucher', points_required:50,  expiry_days:7,    emoji:'🍋' },
+      { id:'r3', name:'Voucher Free Latte',               description:'1 ly Latte miễn phí',                    category:'drink_voucher', points_required:50,  expiry_days:7,    emoji:'☕' },
+      { id:'r4', name:'Voucher Free Trà Sữa Oolong Nhài', description:'1 ly Trà Sữa Oolong Nhài miễn phí',     category:'drink_voucher', points_required:50,  expiry_days:7,    emoji:'🍵' },
+      { id:'r5', name:'Tặng phẩm Bình Giữ Nhiệt',        description:'Bình giữ nhiệt thương hiệu công ty',      category:'merchandise',   points_required:200, expiry_days:null, emoji:'🫗' },
+      { id:'r6', name:'Tặng phẩm Túi Tote',              description:'Túi tote thương hiệu công ty',            category:'merchandise',   points_required:200, expiry_days:null, emoji:'👜' },
+      { id:'r7', name:'Tặng phẩm Sổ Tay',                description:'Sổ tay thương hiệu công ty',              category:'merchandise',   points_required:200, expiry_days:null, emoji:'📓' },
+      { id:"r8", name:"Tặng phẩm Nón 3'",                description:"Nón thương hiệu Three O'Clock",           category:'merchandise',   points_required:200, expiry_days:null, emoji:'🧢' },
+      { id:'r9', name:'01 Free Day Off',                  description:'1 ngày nghỉ phép miễn phí (không trừ phép năm)', category:'privilege', points_required:350, expiry_days:30, emoji:'🏖' },
+    ];
+  } else {
+    const emojis = { drink_voucher:['🍊','🍋','☕','🍵','🧋','🥤'], merchandise:['🫗','👜','📓','🧢','🎁'], privilege:['🏖','🎯','⭐'] };
+    storeRewards = data.map((r, i) => ({
+      ...r,
+      emoji: emojis[r.category]?.[i % emojis[r.category].length] || '🎁'
+    }));
+  }
+
+  filterStore('all', true);
+  loadRedemptionHistory();
+}
+
+const CATEGORY_LABELS = { drink_voucher:'☕ Đồ Uống · 50★', merchandise:'🎁 Tặng Phẩm · 200★', privilege:'⭐ Quyền Lợi Lớn · 350★' };
+
+function filterStore(cat, skipTabUpdate) {
+  storeCurrentFilter = cat;
+  // Update tab styles
+  if (!skipTabUpdate) {
+    document.querySelectorAll('.stab').forEach(t => {
+      t.style.borderBottom = '2px solid transparent';
+      t.classList.remove('active');
+    });
+    const activeTab = document.getElementById('stab-' + (cat==='all'?'all':cat==='drink_voucher'?'drink':cat==='merchandise'?'merch':cat==='privilege'?'priv':'history'));
+    if (activeTab) { activeTab.style.borderBottom = '2.5px solid var(--black)'; activeTab.classList.add('active'); }
+  }
+
+  const isHistory = cat === 'history';
+  document.getElementById('store-view-main').style.display    = isHistory ? 'none' : 'block';
+  document.getElementById('store-view-history').style.display = isHistory ? 'block' : 'none';
+  if (!isHistory) renderStoreGrid(cat);
+}
+
+function renderStoreGrid(cat) {
+  const bal   = currentProfile?.redeemable_points ?? currentProfile?.total_stars ?? 0;
+  const items = cat === 'all' ? storeRewards : storeRewards.filter(r => r.category === cat);
+  const grid  = document.getElementById('store-grid');
+
+  if (!items.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:span 3"><div class="empty-icon">◇</div><div class="empty-txt">Không có phần thưởng</div></div>'; return; }
+
+  // Group by category when showing all
+  let html = '';
+  if (cat === 'all') {
+    const groups = ['drink_voucher','merchandise','privilege'];
+    groups.forEach(g => {
+      const groupItems = items.filter(r => r.category === g);
+      if (!groupItems.length) return;
+      html += `<div style="grid-column:span 3;margin-top:6px;margin-bottom:2px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding-bottom:8px;border-bottom:1px solid var(--border-soft)">${CATEGORY_LABELS[g]||g}</div>
+      </div>`;
+      html += groupItems.map(r => storeItemHTML(r, bal)).join('');
+    });
+  } else {
+    html = items.map(r => storeItemHTML(r, bal)).join('');
+  }
+  grid.innerHTML = html;
+}
+
+function storeItemHTML(r, bal) {
+  const canAfford = bal >= r.points_required;
+  const catLabel  = { drink_voucher:'Voucher đồ uống', merchandise:'Tặng phẩm', privilege:'Quyền lợi' }[r.category] || r.category;
+  const expiry    = r.expiry_days ? `Hạn dùng: ${r.expiry_days} ngày` : 'Không giới hạn hạn';
+  return `<div style="border:1.5px solid ${canAfford?'var(--black)':'var(--border-soft)'};display:flex;flex-direction:column;transition:.15s;${canAfford?'':'opacity:.65'}">
+    <div style="background:var(--bg2);padding:28px 16px;text-align:center;font-size:44px;border-bottom:1px solid var(--border-soft)">${r.emoji}</div>
+    <div style="padding:14px 16px 16px;flex:1;display:flex;flex-direction:column">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">${catLabel}</div>
+      <div style="font-size:13px;font-weight:800;margin-bottom:5px;line-height:1.3">${esc(r.name)}</div>
+      <div style="font-size:12px;color:var(--text3);flex:1;line-height:1.5;margin-bottom:10px">${esc(r.description)}</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:10px">⏱ ${expiry}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto">
+        <div style="font-size:20px;font-weight:900;color:${canAfford?'var(--gold)':'var(--text3)'}">${r.points_required}★</div>
+        <button class="btn${canAfford?'':' btn-outline'}" style="font-size:11px;padding:7px 14px;${canAfford?'':'opacity:.6;cursor:not-allowed'}"
+          onclick="${canAfford ? `confirmRedeem('${r.id}','${esc(r.name)}',${r.points_required})` : ''}">
+          ${canAfford ? 'Đổi →' : 'Chưa đủ ★'}
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function confirmRedeem(rewardId, rewardName, cost) {
+  if (!confirm(`Đổi "${rewardName}" với giá ${cost}★?\n\nVoucher sẽ được tạo ngay sau khi xác nhận.`)) return;
+  doRedeem(rewardId);
+}
+
+async function doRedeem(rewardId) {
+  toast('⏳ Đang xử lý...');
+  try {
+    // Gọi RPC function trong Supabase
+    const { data, error } = await sb.rpc('redeem_reward', { p_reward_id: rewardId });
+    if (error) throw error;
+    if (data?.error) { toast('❌ ' + data.error); return; }
+
+    // Thành công - hiện voucher code
+    const code     = data.voucher_code;
+    const validStr = data.valid_until ? `Hạn dùng: ${new Date(data.valid_until).toLocaleDateString('vi-VN')}` : 'Không có hạn';
+
+    // Reload profile để cập nhật điểm
+    await loadProfile();
+    // Cập nhật số dư trên store
+    const newBal = currentProfile?.redeemable_points ?? 0;
+    document.getElementById('store-balance').textContent = newBal + '★';
+
+    // Show voucher modal
+    showVoucherModal(code, validStr, data.points_spent);
+    loadRedemptionHistory();
+  } catch(e) {
+    if (e.code === 'PGRST202' || e.code === '42883') {
+      toast('⚠️ Cần chạy patch6_reward_system.sql trong Supabase trước!');
+    } else {
+      toast('❌ Lỗi: ' + (e.message || 'Vui lòng thử lại'));
+    }
+  }
+}
+
+function showVoucherModal(code, validStr, cost) {
+  // Tạo modal hiện voucher
+  const existing = document.getElementById('voucher-modal');
+  if (existing) existing.remove();
+
+  const m = document.createElement('div');
+  m.id = 'voucher-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999';
+  m.innerHTML = `<div style="background:#fff;border:2px solid #000;padding:32px;max-width:400px;width:90%;text-align:center">
+    <div style="font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">✅ Đổi thành công!</div>
+    <div style="font-size:32px;font-weight:900;letter-spacing:.15em;border:2.5px dashed var(--black);padding:16px 24px;margin:16px 0;font-family:monospace">${code}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Trừ: <strong style="color:var(--gold)">${cost}★</strong></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:20px">${validStr}</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:20px;line-height:1.6">Chụp màn hình hoặc ghi lại mã voucher.<br>Đưa mã này cho admin / cửa hàng để sử dụng.</div>
+    <button class="btn btn-black" onclick="document.getElementById('voucher-modal').remove()" style="width:100%">Đã hiểu →</button>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+async function loadRedemptionHistory() {
+  const el = document.getElementById('redemption-history-list');
+  if (!el) return;
+
+  const { data, error } = await sb.from('redemptions')
+    .select('*, reward:rewards(name, category)')
+    .eq('user_id', currentUser.id)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error || !data?.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)"><div style="font-size:32px;margin-bottom:10px">📋</div><div>Chưa có lịch sử đổi quà</div></div>';
+    return;
+  }
+
+  const statusStyle = {
+    valid:     { color:'#1a7a1a', bg:'rgba(26,122,26,.08)', label:'✓ VALID' },
+    used:      { color:'var(--text3)', bg:'var(--bg2)', label:'✓ ĐÃ DÙNG' },
+    expired:   { color:'var(--red)', bg:'rgba(139,26,26,.06)', label:'⏱ HẾT HẠN' },
+    cancelled: { color:'var(--text3)', bg:'var(--bg2)', label:'✗ ĐÃ HUỶ' }
+  };
+
+  el.innerHTML = data.map(r => {
+    const s = statusStyle[r.status] || statusStyle.valid;
+    const created = new Date(r.created_at).toLocaleDateString('vi-VN');
+    const validUntil = r.valid_until ? new Date(r.valid_until).toLocaleDateString('vi-VN') : '—';
+    const usedAt = r.used_at ? new Date(r.used_at).toLocaleDateString('vi-VN') : null;
+    return `<div style="border:1.5px solid var(--border-soft);margin-bottom:10px;padding:16px">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:800;margin-bottom:3px">${esc(r.reward?.name || 'Phần thưởng')}</div>
+          <div style="font-size:11px;color:var(--text3)">Đổi ngày: ${created} · Hạn: ${validUntil}${usedAt?' · Dùng ngày: '+usedAt:''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:13px;font-weight:800;color:var(--gold)">-${r.points_spent}★</div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.06em;margin-top:4px;padding:2px 8px;background:${s.bg};color:${s.color}">${s.label}</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;padding:8px 12px;background:var(--bg2);font-family:monospace;font-size:14px;font-weight:800;letter-spacing:.12em;display:flex;align-items:center;justify-content:space-between">
+        <span>${r.voucher_code}</span>
+        <button onclick="navigator.clipboard.writeText('${r.voucher_code}').then(()=>toast('✅ Đã copy!'))" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);font-weight:700">COPY</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// AI BÁO CÁO
+// ═══════════════════════════════════════════════
+async function loadAIReport() {
+  const weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+  const [{ count }, { data: stars }, { data: active }, { data: top }, { data: deptRecs }] = await Promise.all([
+    sb.from('recognitions').select('*',{count:'exact',head:true}).gte('created_at',weekAgo),
+    sb.from('recognitions').select('stars').gte('created_at',weekAgo),
+    sb.from('profiles').select('id',{count:'exact',head:true}).eq('is_active',true),
+    sb.rpc('get_leaderboard',{p_limit:5}),
+    sb.from('recognitions').select('sender_id, profiles!recognitions_sender_id_fkey(department)').gte('created_at',weekAgo),
+  ]);
+  const totalStars = (stars||[]).reduce((s,r)=>s+(r.stars||0),0);
+  const activeCount = active || 0;
+  document.getElementById('ai-stat-recogs').textContent = count || 0;
+  document.getElementById('ai-stat-stars').textContent  = totalStars;
+  document.getElementById('ai-stat-active').textContent = activeCount;
+  document.getElementById('ai-stat-mood').textContent   = activeCount > 0 ? Math.min(100,Math.round((count||0)/activeCount*10))+'%' : '-';
+
+  document.getElementById('ai-top-receivers').innerHTML = (top||[]).map((u,i)=>
+    `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-soft)">
+      <div style="font-size:12px;font-weight:800;width:18px;color:var(--text3)">${i+1}</div>
+      <div class="av" style="width:26px;height:26px;font-size:10px;background:${strToColor(u.full_name)};color:#fff;border:none">${(u.full_name||'?')[0]}</div>
+      <div style="flex:1;font-size:12px;font-weight:700">${esc(u.full_name)}</div>
+      <div style="font-size:12px;font-weight:800;color:var(--gold)">${u.total_stars}★</div>
+    </div>`
+  ).join('') || '<div style="color:var(--text3)">Chưa có dữ liệu</div>';
+
+  const deptMap = {};
+  (deptRecs||[]).forEach(r => { const d = r.profiles?.department||'Khác'; deptMap[d]=(deptMap[d]||0)+1; });
+  const dtotal = Object.values(deptMap).reduce((s,v)=>s+v,0)||1;
+  document.getElementById('ai-dept-breakdown').innerHTML = Object.entries(deptMap).sort((a,b)=>b[1]-a[1]).map(([dept,cnt])=>{
+    const pct=Math.round(cnt/dtotal*100);
+    return `<div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:700">${esc(dept)}</span><span style="color:var(--text3)">${cnt} bài (${pct}%)</span></div>
+      <div style="height:5px;background:var(--bg2);border-radius:2px"><div style="height:100%;width:${pct}%;background:var(--black);border-radius:2px;transition:.4s"></div></div>
+    </div>`;
+  }).join('') || '<div style="color:var(--text3)">Chưa có dữ liệu</div>';
+}
+
+async function generateAIReport() {
+  const btn = document.getElementById('btn-gen-report');
+  const box = document.getElementById('ai-report-content');
+  btn.disabled=true; btn.textContent='◈ Đang phân tích...';
+  box.innerHTML='<div style="text-align:center;padding:30px"><div class="spinner"></div><div style="margin-top:10px;font-size:12px;color:var(--text3)">AI đang đọc dữ liệu văn hóa team...</div></div>';
+
+  const weekAgo = new Date(Date.now()-7*24*60*60*1000).toISOString();
+  const [{ data: recs }, { data: profiles }] = await Promise.all([
+    sb.from('recognitions').select('message,stars,sender:profiles!recognitions_sender_id_fkey(full_name,department),recipient:profiles!recognitions_recipient_id_fkey(full_name,department)').gte('created_at',weekAgo).limit(20),
+    sb.from('profiles').select('full_name,department,total_stars').eq('is_active',true),
+  ]);
+
+  const total = profiles?.length||0;
+  const weekStars = (recs||[]).reduce((s,r)=>s+(r.stars||0),0);
+  const sample = (recs||[]).slice(0,4).map(r=>`"${r.message}"`).join('; ');
+
+  const prompt = `Bạn là chuyên gia phân tích văn hóa doanh nghiệp cho công ty THREE O'CLOCK (ngành F&B/chuỗi cửa hàng đồ uống).
+
+Dữ liệu tuần này:
+- Tổng nhân viên: ${total}
+- Số bài ghi nhận: ${recs?.length||0}
+- Tổng ★ tặng nhau: ${weekStars}
+- Trung bình ★/người: ${total>0?(weekStars/total).toFixed(1):0}
+- Ví dụ tin nhắn: ${sample||'(chưa có)'}
+
+Hãy viết báo cáo phân tích văn hóa team NGẮN GỌN (250-350 chữ) bằng tiếng Việt:
+**1. Tóm tắt sức khoẻ văn hóa** — nhận xét tổng thể dựa vào số liệu
+**2. Điểm tích cực** — 2-3 điểm cụ thể
+**3. Cần cải thiện** — 1-2 điểm thực tế
+**4. Gợi ý hành động** — 1-2 việc cụ thể cho HR/manager tuần tới
+
+Tone: chuyên nghiệp, gần gũi, dựa vào số liệu thực. Không nói chung chung.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:800, messages:[{role:'user',content:prompt}] })
+    });
+    const aiData = await res.json();
+    let text = aiData.content?.[0]?.text || 'Không thể tạo báo cáo';
+    const html = text.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+    box.innerHTML = `<div style="line-height:1.85">${html}</div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-soft);font-size:11px;color:var(--text3)">◈ Được tạo bởi Claude AI · ${new Date().toLocaleString('vi-VN')}</div>`;
+    loadAIReport();
+  } catch(e) {
+    box.innerHTML = '<div style="color:var(--red)">❌ Lỗi kết nối AI. Vui lòng thử lại.</div>';
+  }
+  btn.disabled=false; btn.textContent='◈ Tạo báo cáo mới';
 }
 
 // Enter key for login
