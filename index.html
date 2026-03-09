@@ -269,8 +269,8 @@ textarea.inf { resize:none; min-height:74px; }
 <!-- ══ AUTH SCREEN ══ -->
 <div id="auth-screen">
   <div class="auth-box">
-    <div class="auth-logo">
-      <svg width="44" height="44" viewBox="0 0 48 48" fill="none">
+    <div class="auth-logo" id="auth-logo-area">
+      <svg id="auth-logo-svg" width="44" height="44" viewBox="0 0 48 48" fill="none">
         <circle cx="24" cy="24" r="23" fill="#0A0A0A"/>
         <circle cx="24" cy="24" r="20" stroke="white" stroke-width="1.2" stroke-dasharray="3.5 2.8" fill="none"/>
         <ellipse cx="23.5" cy="27" rx="9.5" ry="7" fill="white"/>
@@ -284,7 +284,7 @@ textarea.inf { resize:none; min-height:74px; }
         <line x1="23.5" y1="27" x2="23.5" y2="23.5" stroke="white" stroke-width="1.1" stroke-linecap="round"/>
         <circle cx="23.5" cy="27" r="0.7" fill="white"/>
       </svg>
-      <div class="auth-brand">Three<br>O'Clock</div>
+      <div class="auth-brand" style="font-size:15px;white-space:nowrap">THREE O'CLOCK</div>
     </div>
 
     <div class="auth-tabs">
@@ -693,11 +693,24 @@ async function doLogin() {
   const pass  = document.getElementById('login-pass').value;
   const err   = document.getElementById('login-err');
   const btn   = document.getElementById('btn-login');
+  err.style.display = 'none';
   if (!email || !pass) { showErr(err, 'Vui lòng nhập đầy đủ thông tin'); return; }
   btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
-  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-  btn.disabled = false; btn.textContent = 'Đăng nhập →';
-  if (error) { showErr(err, 'Email hoặc mật khẩu không đúng'); return; }
+  // Timeout fallback - re-enable after 8s if stuck
+  const timeout = setTimeout(() => {
+    btn.disabled = false; btn.textContent = 'Đăng nhập →';
+    showErr(err, 'Kết nối chậm, vui lòng thử lại');
+  }, 8000);
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    clearTimeout(timeout);
+    btn.disabled = false; btn.textContent = 'Đăng nhập →';
+    if (error) { showErr(err, 'Email hoặc mật khẩu không đúng'); return; }
+  } catch(e) {
+    clearTimeout(timeout);
+    btn.disabled = false; btn.textContent = 'Đăng nhập →';
+    showErr(err, 'Lỗi kết nối, vui lòng thử lại');
+  }
 }
 
 async function doRegister() {
@@ -710,15 +723,28 @@ async function doRegister() {
   if (!name || !email || !pass) { showErr(err, 'Vui lòng nhập đầy đủ thông tin'); return; }
   if (pass.length < 6) { showErr(err, 'Mật khẩu tối thiểu 6 ký tự'); return; }
   btn.disabled = true; btn.textContent = 'Đang tạo tài khoản...';
-  const { error } = await sb.auth.signUp({
-    email, password: pass,
-    options: { data: { full_name: name,
-      department: dept === '__branch__' ? (document.getElementById('reg-branch').value || 'Chi nhánh') : dept,
-      branch: dept === '__branch__' ? (document.getElementById('reg-branch').value || 'Hội sở') : 'Hội sở'
-    } }
-  });
-  btn.disabled = false; btn.textContent = 'Đăng ký →';
-  if (error) { showErr(err, error.message); return; }
+  const timeout2 = setTimeout(() => {
+    btn.disabled = false; btn.textContent = 'Đăng ký →';
+    showErr(err, 'Kết nối chậm, vui lòng thử lại');
+  }, 10000);
+  try {
+    const branchVal = document.getElementById('reg-branch')?.value || 'Hội sở';
+    const { error } = await sb.auth.signUp({
+      email, password: pass,
+      options: { data: { full_name: name,
+        department: dept === '__branch__' ? branchVal : dept,
+        branch: dept === '__branch__' ? branchVal : 'Hội sở'
+      } }
+    });
+    clearTimeout(timeout2);
+    btn.disabled = false; btn.textContent = 'Đăng ký →';
+    if (error) { showErr(err, error.message); return; }
+  } catch(e) {
+    clearTimeout(timeout2);
+    btn.disabled = false; btn.textContent = 'Đăng ký →';
+    showErr(err, 'Lỗi kết nối, vui lòng thử lại');
+    return;
+  }
   // Show pending approval
   document.getElementById('register-form').style.display = 'none';
   document.getElementById('pending-msg').style.display = 'block';
@@ -1446,13 +1472,22 @@ async function uploadLogo(input) {
 
 function applyLogo(url) {
   if (!url) return;
-  // Replace SVG logos with img tag
-  document.querySelectorAll('.brand-logo, .auth-logo svg').forEach(el => {
+  // Replace sidebar SVG logo
+  document.querySelectorAll('.brand-logo').forEach(el => {
     const img = document.createElement('img');
     img.src = url;
     img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
     el.replaceWith(img);
   });
+  // Replace auth screen SVG logo
+  const authSvg = document.getElementById('auth-logo-svg');
+  if (authSvg) {
+    const img = document.createElement('img');
+    img.id = 'auth-logo-svg';
+    img.src = url;
+    img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
+    authSvg.replaceWith(img);
+  }
   // Update preview
   const prev = document.getElementById('logo-preview');
   if (prev) prev.innerHTML = `<img src="${url}" style="width:56px;height:56px;object-fit:contain">`;
@@ -1492,14 +1527,23 @@ async function changePassword() {
   if (np !== cp) { err.textContent = 'Mật khẩu xác nhận không khớp'; err.style.display='block'; return; }
 
   btn.disabled = true; btn.textContent = 'Đang cập nhật...';
-  const { error } = await sb.auth.updateUser({ password: np });
-  btn.disabled = false; btn.textContent = 'Đổi mật khẩu →';
-
-  if (error) { err.textContent = error.message; err.style.display='block'; return; }
-
-  document.getElementById('new-pass').value = '';
-  document.getElementById('confirm-pass').value = '';
-  toast('✅ Đã đổi mật khẩu thành công!');
+  const timeout3 = setTimeout(() => {
+    btn.disabled = false; btn.textContent = 'Đổi mật khẩu →';
+    err.textContent = 'Kết nối chậm, vui lòng thử lại'; err.style.display='block';
+  }, 8000);
+  try {
+    const { error } = await sb.auth.updateUser({ password: np });
+    clearTimeout(timeout3);
+    btn.disabled = false; btn.textContent = 'Đổi mật khẩu →';
+    if (error) { err.textContent = error.message; err.style.display='block'; return; }
+    document.getElementById('new-pass').value = '';
+    document.getElementById('confirm-pass').value = '';
+    toast('✅ Đã đổi mật khẩu thành công!');
+  } catch(e) {
+    clearTimeout(timeout3);
+    btn.disabled = false; btn.textContent = 'Đổi mật khẩu →';
+    err.textContent = 'Lỗi kết nối, vui lòng thử lại'; err.style.display='block';
+  }
 }
 
 // Enter key for login
