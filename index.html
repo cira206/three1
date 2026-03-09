@@ -319,20 +319,17 @@ textarea.inf { resize:none; min-height:74px; }
       <div id="reg-err" class="auth-err"></div>
       <div class="field"><label>Họ và tên</label><input class="inp" id="reg-name" type="text" placeholder="Nguyễn Văn A"></div>
       <div class="field"><label>Email công ty</label><input class="inp" id="reg-email" type="email" placeholder="ten@congty.com"></div>
-      <div class="field"><label>Phòng ban</label>
-        <select class="inp" id="reg-dept" onchange="onDeptChange(this)">
-          <option value="Sale">Sale Team</option>
-          <option value="CS">CS Team</option>
-          <option value="Dev">Dev Team</option>
-          <option value="Marketing">Marketing</option>
-          <option value="HR">HR</option>
-          <option value="Admin">Admin</option>
-          <option value="__branch__">Chi nhánh</option>
+      <div class="field"><label>Khối</label>
+        <select class="inp" id="reg-khoi" onchange="onKhoiChange(this)">
+          <option value="">-- Chọn khối --</option>
+          <option value="KHỐI VĂN PHÒNG">KHỐI VĂN PHÒNG</option>
+          <option value="KHỐI CỬA HÀNG">KHỐI CỬA HÀNG</option>
         </select>
       </div>
-      <div class="field" id="branch-field" style="display:none"><label>Chọn chi nhánh</label>
-        <select class="inp" id="reg-branch">
-          <option value="">Đang tải...</option>
+      <div class="field" id="dept-field" style="display:none">
+        <label id="dept-label">Phòng ban</label>
+        <select class="inp" id="reg-dept">
+          <option value="">-- Chọn phòng ban --</option>
         </select>
       </div>
       <div class="field"><label>Mật khẩu</label><input class="inp" id="reg-pass" type="password" placeholder="Tối thiểu 6 ký tự"></div>
@@ -617,6 +614,7 @@ textarea.inf { resize:none; min-height:74px; }
         <div class="tab active" onclick="adminTab('pending',this)">⏳ Chờ duyệt</div>
         <div class="tab" onclick="adminTab('employees',this)">👥 Nhân viên</div>
         <div class="tab" onclick="adminTab('branches',this)">🏪 Chi nhánh</div>
+        <div class="tab" onclick="adminTab('depts',this)">🏢 Phòng ban</div>
         <div class="tab" onclick="adminTab('logo',this)">🖼 Logo</div>
         <div class="tab" onclick="adminTab('admins',this)">★ Admin</div>
         <div class="tab" onclick="adminTab('flags',this)">⚠ Cảnh báo</div>
@@ -633,6 +631,31 @@ textarea.inf { resize:none; min-height:74px; }
         </div>
       </div>
 
+      </div>
+      <div id="admin-section-depts" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="ct">🏢 Quản lý phòng ban</div>
+
+          <!-- KHỐI VĂN PHÒNG -->
+          <div style="margin-bottom:18px">
+            <div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:8px 12px;background:var(--black);color:#FFF;margin-bottom:10px">KHỐI VĂN PHÒNG</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <input class="inp" id="new-dept-vanphong" placeholder="Tên phòng ban mới..." style="flex:1;margin-bottom:0">
+              <button class="btn btn-black" onclick="addDept('KHỐI VĂN PHÒNG')" style="white-space:nowrap">+ Thêm</button>
+            </div>
+            <div id="depts-vanphong-list"></div>
+          </div>
+
+          <!-- KHỐI CỬA HÀNG -->
+          <div>
+            <div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:8px 12px;background:var(--black);color:#FFF;margin-bottom:10px">KHỐI CỬA HÀNG</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <input class="inp" id="new-dept-cuahang" placeholder="Tên cửa hàng / vị trí mới..." style="flex:1;margin-bottom:0">
+              <button class="btn btn-black" onclick="addDept('KHỐI CỬA HÀNG')" style="white-space:nowrap">+ Thêm</button>
+            </div>
+            <div id="depts-cuahang-list"></div>
+          </div>
+        </div>
       </div>
       <div id="admin-section-logo" style="display:none">
       <!-- LOGO UPLOAD -->
@@ -913,24 +936,29 @@ async function doLogin() {
 async function doRegister() {
   const name  = document.getElementById('reg-name').value.trim();
   const email = document.getElementById('reg-email').value.trim();
+  const khoi  = document.getElementById('reg-khoi').value;
   const dept  = document.getElementById('reg-dept').value;
   const pass  = document.getElementById('reg-pass').value;
   const err   = document.getElementById('reg-err');
   const btn   = document.getElementById('btn-reg');
+
   if (!name || !email || !pass) { showErr(err, 'Vui lòng nhập đầy đủ thông tin'); return; }
+  if (!khoi) { showErr(err, 'Vui lòng chọn khối'); return; }
+  if (!dept) { showErr(err, 'Vui lòng chọn phòng ban'); return; }
   if (pass.length < 6) { showErr(err, 'Mật khẩu tối thiểu 6 ký tự'); return; }
+
   btn.disabled = true; btn.textContent = 'Đang tạo tài khoản...';
   const timeout2 = setTimeout(() => {
     btn.disabled = false; btn.textContent = 'Đăng ký →';
     showErr(err, 'Kết nối chậm, vui lòng thử lại');
   }, 10000);
   try {
-    const branchVal = document.getElementById('reg-branch')?.value || 'Hội sở';
     const { error } = await sb.auth.signUp({
       email, password: pass,
-      options: { data: { full_name: name,
-        department: dept === '__branch__' ? branchVal : dept,
-        branch: dept === '__branch__' ? branchVal : 'Hội sở'
+      options: { data: {
+        full_name: name,
+        department: dept,
+        khoi: khoi
       } }
     });
     clearTimeout(timeout2);
@@ -942,7 +970,6 @@ async function doRegister() {
     showErr(err, 'Lỗi kết nối, vui lòng thử lại');
     return;
   }
-  // Show pending approval
   document.getElementById('register-form').style.display = 'none';
   document.getElementById('pending-msg').style.display = 'block';
 }
@@ -1853,7 +1880,7 @@ async function checkPendingOnLoad() {
 // ADMIN TABS
 // ═══════════════════════════════════════════════
 function adminTab(name, el) {
-  const sections = ['pending','employees','branches','logo','admins','flags','fraud','history'];
+  const sections = ['pending','employees','branches','depts','logo','admins','flags','fraud','history'];
   sections.forEach(s => {
     const el2 = document.getElementById('admin-section-' + s);
     if (el2) el2.style.display = 'none';
@@ -1865,6 +1892,7 @@ function adminTab(name, el) {
   // Lazy load
   if (name === 'employees') loadEmployeesList();
   if (name === 'branches')  loadBranches();
+  if (name === 'depts')     loadDepts();
   if (name === 'admins')    loadAdminList();
   if (name === 'flags')     loadFlags();
   if (name === 'fraud')     loadFraudDashboard();
@@ -2026,6 +2054,59 @@ async function loadHistory() {
       <td style="font-weight:800;color:var(--gold)">${'★'.repeat(r.stars)}</td>
       <td>${r.value_tag}</td>
     </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+// DEPARTMENTS
+// ═══════════════════════════════════════════════
+async function loadDepts() {
+  const { data } = await sb.from('departments').select('*').order('khoi').order('name');
+  const vp = (data||[]).filter(d => d.khoi === 'KHỐI VĂN PHÒNG');
+  const ch = (data||[]).filter(d => d.khoi === 'KHỐI CỬA HÀNG');
+  renderDeptList('depts-vanphong-list', vp);
+  renderDeptList('depts-cuahang-list', ch);
+}
+
+function renderDeptList(elId, list) {
+  const el = document.getElementById(elId);
+  if (!list.length) {
+    el.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--text3)">Chưa có phòng ban nào. Thêm ở trên!</div>';
+    return;
+  }
+  el.innerHTML = list.map(d => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border-soft);margin-bottom:5px;background:${d.is_active?'#FFF':'var(--bg2)'}">
+      <div style="flex:1;font-size:13px;font-weight:600;${d.is_active?'':'text-decoration:line-through;color:var(--text3)'}">${esc(d.name)}</div>
+      <span style="font-size:10px;font-weight:800;padding:2px 7px;background:${d.is_active?'#e8f5e9':'var(--bg2)'};color:${d.is_active?'#2e7d32':'var(--text3)'}">
+        ${d.is_active ? 'Hoạt động' : 'Ẩn'}
+      </span>
+      <button class="btn btn-outline" style="padding:3px 8px;font-size:10px" onclick="toggleDept('${d.id}',${d.is_active})">
+        ${d.is_active ? 'Ẩn' : 'Hiện'}
+      </button>
+      <button class="btn btn-red" style="padding:3px 8px;font-size:10px" onclick="deleteDept('${d.id}','${esc(d.name)}')">Xóa</button>
+    </div>`).join('');
+}
+
+async function addDept(khoi) {
+  const inputId = khoi === 'KHỐI VĂN PHÒNG' ? 'new-dept-vanphong' : 'new-dept-cuahang';
+  const name = document.getElementById(inputId).value.trim();
+  if (!name) { toast('Vui lòng nhập tên phòng ban'); return; }
+  const { error } = await sb.from('departments').insert({ name, khoi });
+  if (error) { toast('❌ ' + (error.message.includes('unique') ? 'Phòng ban đã tồn tại' : error.message)); return; }
+  document.getElementById(inputId).value = '';
+  toast('✅ Đã thêm phòng ban: ' + name);
+  loadDepts();
+}
+
+async function toggleDept(id, currentActive) {
+  await sb.from('departments').update({ is_active: !currentActive }).eq('id', id);
+  loadDepts();
+}
+
+async function deleteDept(id, name) {
+  if (!confirm(`Xóa phòng ban "${name}"?`)) return;
+  await sb.from('departments').delete().eq('id', id);
+  toast('🗑 Đã xóa phòng ban ' + name);
+  loadDepts();
 }
 
 // ═══════════════════════════════════════════════
