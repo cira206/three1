@@ -613,7 +613,6 @@ textarea.inf { resize:none; min-height:74px; }
       <div class="tabs" style="margin-bottom:18px">
         <div class="tab active" onclick="adminTab('pending',this)">⏳ Chờ duyệt</div>
         <div class="tab" onclick="adminTab('employees',this)">👥 Nhân viên</div>
-        <div class="tab" onclick="adminTab('branches',this)">🏪 Chi nhánh</div>
         <div class="tab" onclick="adminTab('depts',this)">🏢 Phòng ban</div>
         <div class="tab" onclick="adminTab('logo',this)">🖼 Logo</div>
         <div class="tab" onclick="adminTab('admins',this)">★ Admin</div>
@@ -1918,7 +1917,7 @@ async function checkPendingOnLoad() {
 // ADMIN TABS
 // ═══════════════════════════════════════════════
 function adminTab(name, el) {
-  const sections = ['pending','employees','branches','depts','logo','admins','flags','fraud','history'];
+  const sections = ['pending','employees','depts','logo','admins','flags','fraud','history'];
   sections.forEach(s => {
     const el2 = document.getElementById('admin-section-' + s);
     if (el2) el2.style.display = 'none';
@@ -1929,7 +1928,6 @@ function adminTab(name, el) {
   el.classList.add('active');
   // Lazy load
   if (name === 'employees') loadEmployeesList();
-  if (name === 'branches')  loadBranches();
   if (name === 'depts')     loadDepts();
   if (name === 'admins')    loadAdminList();
   if (name === 'flags')     loadFlags();
