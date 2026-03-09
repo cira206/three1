@@ -430,6 +430,16 @@ textarea.inf { resize:none; min-height:74px; }
             <div class="ctitle">✦ Đăng Lời Cảm Ơn</div>
             <select class="inf" id="compose-to"><option value="">Chọn người nhận...</option></select>
             <textarea class="inf" id="compose-msg" placeholder="Viết lời cảm ơn..."></textarea>
+            <!-- IMAGE UPLOAD -->
+            <div style="margin-bottom:11px">
+              <input type="file" id="compose-img-input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewComposeImage(this)">
+              <div id="compose-img-preview" style="display:none;margin-bottom:8px;position:relative;display:none">
+                <img id="compose-img-thumb" style="max-height:120px;max-width:100%;border:1.5px solid var(--border-soft);display:block">
+                <button onclick="removeComposeImage()" style="position:absolute;top:4px;right:4px;background:var(--red);color:#FFF;border:none;width:22px;height:22px;cursor:pointer;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">✕</button>
+              </div>
+              <button class="btn btn-outline" style="padding:5px 11px;font-size:10px" onclick="document.getElementById('compose-img-input').click()">📎 Đính kèm ảnh</button>
+              <span style="font-size:10px;color:var(--text3);margin-left:8px">JPG/PNG/WEBP · tự động nén</span>
+            </div>
             <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">Giá trị liên quan</div>
             <div class="vrow">
               <div class="vc sel" data-val="teamwork" onclick="selVal(this)">Teamwork</div>
@@ -610,6 +620,7 @@ textarea.inf { resize:none; min-height:74px; }
         <div class="tab" onclick="adminTab('logo',this)">🖼 Logo</div>
         <div class="tab" onclick="adminTab('admins',this)">★ Admin</div>
         <div class="tab" onclick="adminTab('flags',this)">⚠ Cảnh báo</div>
+        <div class="tab" onclick="adminTab('fraud',this)">🔍 Chống gian lận</div>
         <div class="tab" onclick="adminTab('history',this)">📋 Lịch sử</div>
       </div>
 
@@ -686,6 +697,35 @@ textarea.inf { resize:none; min-height:74px; }
               <thead><tr><th>Nhân viên</th><th>Email</th><th>Chi nhánh</th><th>Bộ phận</th><th>★ Tổng</th><th>Role</th><th></th></tr></thead>
               <tbody id="employees-body"></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+      <div id="admin-section-fraud" style="display:none">
+        <!-- FRAUD STATS -->
+        <div class="stats-row" style="margin-bottom:16px">
+          <div class="sb"><div class="sbl">Tổng cảnh báo</div><div class="sbv" id="fraud-total" style="color:var(--red)">—</div><div class="sbi">🔍</div></div>
+          <div class="sb"><div class="sbl">Chưa xử lý</div><div class="sbv" id="fraud-pending" style="color:var(--red)">—</div><div class="sbi">⚠</div></div>
+          <div class="sb"><div class="sbl">Vòng tròn</div><div class="sbv" id="fraud-circles">—</div><div class="sbi">↺</div></div>
+          <div class="sb hl"><div class="sbl">Sao nghi ngờ</div><div class="sbv" id="fraud-stars">—</div><div class="sbi">★</div></div>
+        </div>
+        <!-- ACTIONS -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+          <button class="btn btn-black" onclick="runFraudAnalysis()">🔍 Quét vòng tròn ngay</button>
+          <button class="btn btn-outline" onclick="runSpikeAnalysis()">📈 Quét tăng đột biến</button>
+          <button class="btn btn-outline" onclick="updateTrustScores()">★ Cập nhật Trust Score</button>
+        </div>
+        <!-- FRAUD LIST -->
+        <div class="card">
+          <div class="ct">Danh sách cảnh báo gian lận</div>
+          <div id="fraud-list">
+            <div class="loading" style="height:80px"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <!-- LOW TRUST USERS -->
+        <div class="card" style="margin-top:14px">
+          <div class="ct">⚠ Nhân viên Trust Score thấp (dưới 70)</div>
+          <div id="low-trust-list">
+            <div class="loading" style="height:60px"><div class="spinner"></div></div>
           </div>
         </div>
       </div>
@@ -1092,6 +1132,7 @@ function renderPost(r) {
       <span class="vtag ${valClass[r.value_tag]||'vt-tw'}">${valMap[r.value_tag]||r.value_tag}</span>
     </div>
     <div class="pb">${esc(r.message)}</div>
+    ${r.image_url ? `<div style="margin-bottom:10px"><img src="${r.image_url}" style="max-width:100%;max-height:220px;border:1.5px solid var(--border-soft);display:block;cursor:pointer" onclick="window.open('${r.image_url}','_blank')"></div>` : ''}
     <div class="sa">${stars} &nbsp;+${r.stars} Sao kinh nghiệm</div>
     <div class="pacts">
       <button class="ab" onclick="toggleLike('${r.id}',this)">Thích · ${r.like_count||0}</button>
@@ -1396,24 +1437,99 @@ function selStar(el) {
   el.classList.add('sel');
 }
 
+// Image compression
+async function compressImage(file, maxKB = 100) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        const maxDim = 800;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else       { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        let quality = 0.8;
+        const tryCompress = () => {
+          canvas.toBlob((blob) => {
+            if (blob.size > maxKB * 1024 && quality > 0.3) {
+              quality -= 0.1;
+              tryCompress();
+            } else {
+              resolve(blob);
+            }
+          }, 'image/jpeg', quality);
+        };
+        tryCompress();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function previewComposeImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const preview = document.getElementById('compose-img-preview');
+    const thumb   = document.getElementById('compose-img-thumb');
+    thumb.src = e.target.result;
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeComposeImage() {
+  document.getElementById('compose-img-input').value = '';
+  document.getElementById('compose-img-preview').style.display = 'none';
+  document.getElementById('compose-img-thumb').src = '';
+}
+
+async function uploadRecognitionImage(file) {
+  const compressed = await compressImage(file, 100);
+  const path = `${currentUser.id}/${Date.now()}.jpg`;
+  const { error } = await sb.storage.from('recognition-images').upload(path, compressed, {
+    contentType: 'image/jpeg', upsert: false
+  });
+  if (error) { console.error('Upload error:', error); return null; }
+  const { data } = sb.storage.from('recognition-images').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 async function submitPost() {
   const toId   = document.getElementById('compose-to').value;
   const msg    = document.getElementById('compose-msg').value.trim();
   const valEl  = document.querySelector('#ca .vc.sel');
   const starEl = document.querySelector('#ca .so.sel');
-  if (!toId)   { toast('Vui lòng chọn người nhận'); return; }
-  if (!msg)    { toast('Vui lòng viết lời cảm ơn'); return; }
+  if (!toId) { toast('Vui lòng chọn người nhận'); return; }
+  if (!msg)  { toast('Vui lòng viết lời cảm ơn'); return; }
 
   const val   = valEl?.dataset.val  || 'teamwork';
   const stars = parseInt(starEl?.dataset.stars || '1');
   const btn   = document.getElementById('btn-post');
   btn.disabled = true; btn.textContent = 'Đang gửi...';
 
+  // Upload ảnh nếu có
+  let imageUrl = null;
+  const imgInput = document.getElementById('compose-img-input');
+  if (imgInput.files[0]) {
+    btn.textContent = 'Đang nén ảnh...';
+    imageUrl = await uploadRecognitionImage(imgInput.files[0]);
+  }
+
+  btn.textContent = 'Đang đăng...';
   const { data, error } = await sb.rpc('give_stars', {
     p_to_user_id: toId,
     p_stars:      stars,
     p_message:    msg,
-    p_value_tag:  val
+    p_value_tag:  val,
+    p_image_url:  imageUrl
   });
 
   btn.disabled = false; btn.textContent = 'Đăng ngay →';
@@ -1423,10 +1539,17 @@ async function submitPost() {
     return;
   }
 
+  // Fraud warning
+  if (data?.fraud_warning?.flagged) {
+    toast('⚠️ Bài đăng bị gắn cờ kiểm tra gian lận!');
+  } else {
+    toast('✦ Đã đăng lời cảm ơn thành công!');
+  }
+
   document.getElementById('ca').classList.remove('open');
   document.getElementById('compose-msg').value = '';
   document.getElementById('compose-to').value  = '';
-  toast('✦ Đã đăng lời cảm ơn thành công!');
+  removeComposeImage();
   await loadQuota();
 }
 
@@ -1700,7 +1823,7 @@ async function checkPendingOnLoad() {
 // ADMIN TABS
 // ═══════════════════════════════════════════════
 function adminTab(name, el) {
-  const sections = ['pending','employees','branches','logo','admins','flags','history'];
+  const sections = ['pending','employees','branches','logo','admins','flags','fraud','history'];
   sections.forEach(s => {
     const el2 = document.getElementById('admin-section-' + s);
     if (el2) el2.style.display = 'none';
@@ -1714,6 +1837,7 @@ function adminTab(name, el) {
   if (name === 'branches')  loadBranches();
   if (name === 'admins')    loadAdminList();
   if (name === 'flags')     loadFlags();
+  if (name === 'fraud')     loadFraudDashboard();
   if (name === 'history')   loadHistory();
 }
 
@@ -1992,6 +2116,109 @@ async function loadAdminList() {
 async function loadLogo() {
   const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
   if (data?.value) applyLogo(data.value);
+}
+
+// ═══════════════════════════════════════════════
+// FRAUD DETECTION DASHBOARD
+// ═══════════════════════════════════════════════
+const fraudTypeLabel = {
+  circle_pair:  '🔄 Vòng tròn 2 người',
+  circle_group: '↺ Vòng tròn nhóm',
+  flood_single: '💧 Tập trung 1 người',
+  rapid_fire:   '⚡ Tặng liên tục',
+  copy_paste:   '📋 Copy paste',
+  spike:        '📈 Tăng đột biến'
+};
+const fraudSeverityColor = { high:'var(--red)', medium:'var(--gold)', low:'var(--grey)' };
+
+async function loadFraudDashboard() {
+  const { data: frauds } = await sb.from('fraud_analysis')
+    .select('*').order('created_at', { ascending: false });
+
+  const all      = frauds || [];
+  const pending  = all.filter(f => !f.is_resolved);
+  const circles  = all.filter(f => f.flag_type.includes('circle'));
+  const starsAt  = pending.reduce((s,f) => s + (f.stars_at_risk||0), 0);
+
+  document.getElementById('fraud-total').textContent   = all.length;
+  document.getElementById('fraud-pending').textContent = pending.length;
+  document.getElementById('fraud-circles').textContent = circles.length;
+  document.getElementById('fraud-stars').textContent   = starsAt + '★';
+
+  // Fraud list
+  const el = document.getElementById('fraud-list');
+  if (!pending.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3)">✅ Không có cảnh báo nào chưa xử lý</div>';
+  } else {
+    el.innerHTML = pending.map(f => `
+      <div style="border-left:3px solid ${fraudSeverityColor[f.severity]||'var(--grey)'};padding:12px 14px;margin-bottom:8px;background:var(--bg2)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <span style="font-size:12px;font-weight:800">${fraudTypeLabel[f.flag_type]||f.flag_type}</span>
+          <span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;background:${fraudSeverityColor[f.severity]};color:#FFF">${f.severity}</span>
+          <span style="margin-left:auto;font-size:10px;color:var(--text3)">${timeAgo(f.created_at)}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${f.details?.description || '—'}</div>
+        ${f.stars_at_risk ? `<div style="font-size:11px;font-weight:700;color:var(--gold);margin-bottom:8px">Sao nguy cơ: ${f.stars_at_risk}★</div>` : ''}
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline" style="padding:4px 9px;font-size:10px" onclick="resolveFraud('${f.id}','ok')">✓ Bình thường</button>
+          <button class="btn btn-red" style="padding:4px 9px;font-size:10px" onclick="resolveFraud('${f.id}','penalize')">✗ Xác nhận gian lận</button>
+        </div>
+      </div>`).join('');
+  }
+
+  // Low trust users
+  const { data: lowTrust } = await sb.from('profiles')
+    .select('id,full_name,avatar_text,department,branch,trust_score,total_stars')
+    .lt('trust_score', 70).eq('is_active', true).order('trust_score');
+  const ltEl = document.getElementById('low-trust-list');
+  if (!lowTrust?.length) {
+    ltEl.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--text3)">✅ Tất cả nhân viên có Trust Score bình thường</div>';
+  } else {
+    ltEl.innerHTML = lowTrust.map(u => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-soft)">
+        <div class="av" style="background:${strToColor(u.full_name)};color:#FFF;border:none;flex-shrink:0">${u.avatar_text||'?'}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700">${esc(u.full_name)}</div>
+          <div style="font-size:11px;color:var(--text3)">${esc(u.branch||'')} · ${esc(u.department||'')}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:16px;font-weight:800;color:${u.trust_score<40?'var(--red)':'var(--gold)'}">${u.trust_score}/100</div>
+          <div style="font-size:10px;color:var(--text3)">Trust Score</div>
+        </div>
+      </div>`).join('');
+  }
+}
+
+async function resolveFraud(id, action) {
+  await sb.from('fraud_analysis').update({
+    is_resolved: true,
+    is_penalized: action === 'penalize',
+    resolved_by: currentUser.id,
+    resolved_at: new Date().toISOString()
+  }).eq('id', id);
+  toast(action === 'penalize' ? '⚠️ Đã đánh dấu gian lận' : '✅ Đã đánh dấu bình thường');
+  loadFraudDashboard();
+}
+
+async function runFraudAnalysis() {
+  toast('🔍 Đang quét vòng tròn...');
+  const { data } = await sb.rpc('analyze_group_circles');
+  toast(`✅ Quét xong! Tìm thấy ${data?.circles_found || 0} vòng tròn`);
+  loadFraudDashboard();
+}
+
+async function runSpikeAnalysis() {
+  toast('📈 Đang quét tăng đột biến...');
+  const { data } = await sb.rpc('analyze_star_spikes');
+  toast(`✅ Quét xong! Tìm thấy ${data?.spikes_found || 0} trường hợp`);
+  loadFraudDashboard();
+}
+
+async function updateTrustScores() {
+  toast('★ Đang cập nhật Trust Score...');
+  await sb.rpc('update_trust_scores');
+  toast('✅ Đã cập nhật Trust Score tất cả nhân viên!');
+  loadFraudDashboard();
 }
 
 // ═══════════════════════════════════════════════
