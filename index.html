@@ -784,7 +784,12 @@ textarea.inf { resize:none; min-height:74px; }
 const SUPABASE_URL = 'https://zkdothuvthxenonehnyj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZG90aHV2dGh4ZW5vbmVobnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTgxMTAsImV4cCI6MjA4ODUzNDExMH0.O4xPbe07-8d0VDUmpt1UukIsN-tEeLbdK9EHUYctSHs';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true }
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+    flowType: 'implicit'
+  }
 });
 
 // Load logo ngay khi trang mở — chờ DOM sẵn sàng
@@ -889,6 +894,8 @@ async function doLogin() {
       clearTimeout(timeout);
       btn.disabled = false; btn.textContent = 'Đăng nhập →';
       if (error) { showErr(err, 'Email hoặc mật khẩu không đúng'); return; }
+      // Reset để onAuthStateChange có thể loadApp
+      appLoaded = false;
     } catch(e) {
       clearTimeout(timeout);
       if (attempts < maxAttempts) {
@@ -941,12 +948,17 @@ async function doRegister() {
 }
 
 async function doLogout() {
+  appLoaded = false;
   if (notifChannel) sb.removeChannel(notifChannel);
   if (realtimeChannel) sb.removeChannel(realtimeChannel);
   await sb.auth.signOut();
   currentUser = null; currentProfile = null;
   document.getElementById('app').classList.remove('visible');
   document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('login-form').style.display = 'block';
+  document.getElementById('register-form').style.display = 'none';
+  document.getElementById('pending-msg').style.display = 'none';
+  document.querySelectorAll('.auth-tab').forEach(t => t.style.display = '');
 }
 
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
@@ -964,13 +976,31 @@ async function loadBranchesForRegister() {
 }
 // branches loaded on demand when user selects Chi nhánh
 
+let appLoaded = false;
+
 sb.auth.onAuthStateChange(async (event, session) => {
-  if (session?.user) {
-    currentUser = session.user;
-    await loadApp();
-  } else {
+  console.log('[Auth]', event, session?.user?.email);
+
+  if (event === 'SIGNED_OUT' || !session) {
+    appLoaded = false;
+    currentUser = null;
+    currentProfile = null;
     document.getElementById('auth-screen').style.display = 'flex';
     document.getElementById('app').classList.remove('visible');
+    return;
+  }
+
+  // Chỉ load app 1 lần khi có session hợp lệ
+  if (session?.user && !appLoaded) {
+    appLoaded = true;
+    currentUser = session.user;
+    await loadApp();
+    return;
+  }
+
+  // Token refresh — chỉ cập nhật user, không reload app
+  if (event === 'TOKEN_REFRESHED' && session?.user) {
+    currentUser = session.user;
   }
 });
 
