@@ -865,6 +865,44 @@ function switchTab(tab) {
 }
 
 // ═══════════════════════════════════════════════
+// KHOI + DEPARTMENT DROPDOWN IN REGISTER FORM
+// ═══════════════════════════════════════════════
+async function onKhoiChange(sel) {
+  const khoi      = sel.value;
+  const deptField = document.getElementById('dept-field');
+  const deptSel   = document.getElementById('reg-dept');
+  const deptLabel = document.getElementById('dept-label');
+
+  if (!khoi) {
+    deptField.style.display = 'none';
+    return;
+  }
+
+  deptField.style.display = 'block';
+  deptLabel.textContent = khoi === 'KHỐI VĂN PHÒNG' ? 'Phòng ban' : 'Vị trí / Cửa hàng';
+  deptSel.innerHTML = '<option value="">Đang tải...</option>';
+
+  const { data, error } = await sb.from('departments')
+    .select('name')
+    .eq('khoi', khoi)
+    .eq('is_active', true)
+    .order('name');
+
+  if (error) {
+    deptSel.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
+    console.error('Dept load error:', error);
+    return;
+  }
+
+  if (data && data.length > 0) {
+    deptSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
+      data.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+  } else {
+    deptSel.innerHTML = '<option value="">-- Chưa có phòng ban nào --</option>';
+  }
+}
+
+// ═══════════════════════════════════════════════
 // BRANCH DROPDOWN IN REGISTER FORM
 // ═══════════════════════════════════════════════
 async function onDeptChange(sel) {
