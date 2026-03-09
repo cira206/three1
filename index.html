@@ -743,7 +743,38 @@ textarea.inf { resize:none; min-height:74px; }
 // ═══════════════════════════════════════════════
 const SUPABASE_URL = 'https://zkdothuvthxenonehnyj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZG90aHV2dGh4ZW5vbmVobnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTgxMTAsImV4cCI6MjA4ODUzNDExMH0.O4xPbe07-8d0VDUmpt1UukIsN-tEeLbdK9EHUYctSHs';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true }
+});
+
+// Load logo ngay khi trang mở — trước khi auth
+(async () => {
+  try {
+    const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
+    if (data?.value) applyLogoEarly(data.value);
+  } catch(e) {}
+})();
+
+function applyLogoEarly(url) {
+  if (!url) return;
+  // Auth screen logo
+  const authSvg = document.getElementById('auth-logo-svg');
+  if (authSvg) {
+    const img = document.createElement('img');
+    img.id = 'auth-logo-svg';
+    img.src = url;
+    img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
+    authSvg.replaceWith(img);
+  }
+  // Sidebar logo
+  document.querySelectorAll('.brand-logo').forEach(el => {
+    const img = document.createElement('img');
+    img.src = url;
+    img.className = 'brand-logo';
+    img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
+    el.replaceWith(img);
+  });
+}
 
 let currentUser = null;
 let currentProfile = null;
@@ -793,21 +824,43 @@ async function doLogin() {
   err.style.display = 'none';
   if (!email || !pass) { showErr(err, 'Vui lòng nhập đầy đủ thông tin'); return; }
   btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
-  // Timeout fallback - re-enable after 8s if stuck
-  const timeout = setTimeout(() => {
-    btn.disabled = false; btn.textContent = 'Đăng nhập →';
-    showErr(err, 'Kết nối chậm, vui lòng thử lại');
-  }, 8000);
-  try {
+  
+  const tryLogin = async () => {
     const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-    clearTimeout(timeout);
-    btn.disabled = false; btn.textContent = 'Đăng nhập →';
-    if (error) { showErr(err, 'Email hoặc mật khẩu không đúng'); return; }
-  } catch(e) {
-    clearTimeout(timeout);
-    btn.disabled = false; btn.textContent = 'Đăng nhập →';
-    showErr(err, 'Lỗi kết nối, vui lòng thử lại');
-  }
+    return { data, error };
+  };
+
+  let attempts = 0;
+  const maxAttempts = 2;
+  
+  const attemptLogin = async () => {
+    attempts++;
+    const timeout = setTimeout(() => {
+      if (attempts < maxAttempts) {
+        btn.textContent = 'Đang thử lại...';
+        attemptLogin();
+      } else {
+        btn.disabled = false; btn.textContent = 'Đăng nhập →';
+        showErr(err, 'Kết nối chậm, vui lòng thử lại sau ít phút');
+      }
+    }, 15000);
+    try {
+      const { data, error } = await tryLogin();
+      clearTimeout(timeout);
+      btn.disabled = false; btn.textContent = 'Đăng nhập →';
+      if (error) { showErr(err, 'Email hoặc mật khẩu không đúng'); return; }
+    } catch(e) {
+      clearTimeout(timeout);
+      if (attempts < maxAttempts) {
+        btn.textContent = 'Đang thử lại...';
+        attemptLogin();
+      } else {
+        btn.disabled = false; btn.textContent = 'Đăng nhập →';
+        showErr(err, 'Lỗi kết nối, vui lòng thử lại');
+      }
+    }
+  };
+  attemptLogin();
 }
 
 async function doRegister() {
@@ -1916,23 +1969,8 @@ async function uploadLogo(input) {
 
 function applyLogo(url) {
   if (!url) return;
-  // Replace sidebar SVG logo
-  document.querySelectorAll('.brand-logo').forEach(el => {
-    const img = document.createElement('img');
-    img.src = url;
-    img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
-    el.replaceWith(img);
-  });
-  // Replace auth screen SVG logo
-  const authSvg = document.getElementById('auth-logo-svg');
-  if (authSvg) {
-    const img = document.createElement('img');
-    img.id = 'auth-logo-svg';
-    img.src = url;
-    img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
-    authSvg.replaceWith(img);
-  }
-  // Update preview
+  applyLogoEarly(url);
+  // Update preview in admin
   const prev = document.getElementById('logo-preview');
   if (prev) prev.innerHTML = `<img src="${url}" style="width:56px;height:56px;object-fit:contain">`;
 }
