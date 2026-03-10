@@ -1667,6 +1667,9 @@ async function loadApp() {
     }
 
     loadLogo();
+    if (profile.role === 'admin' || profile.role === 'manager') {
+      loadAdminNotifs();
+    }
     await Promise.allSettled([
       loadFeed().catch(e => console.warn('loadFeed:', e)),
       loadQuota().catch(e => console.warn('loadQuota:', e)),
@@ -2196,6 +2199,9 @@ async function submitPostModal() {
   if (error || !data?.success) { toast('❌ ' + (error?.message || 'Lỗi')); return; }
   closePostModal();
   toast('✦ Đã đăng lời cảm ơn thành công!');
+  // Thông báo admin
+  const toNamePost = document.getElementById('pm-to').options[document.getElementById('pm-to').selectedIndex]?.text || '';
+  sendAdminNotif('post_recognition', '✍️ Lời cảm ơn mới', `${currentProfile?.full_name} đăng cảm ơn ${toNamePost.split('–')[0].trim()} · ${stars}★`, { stars, target_name: toNamePost, message: msg });
   await loadFeed();
 }
 
@@ -2445,6 +2451,9 @@ async function sendGift() {
   closeModal();
   document.getElementById('modal-msg').value = '';
   toast('✦ Đã gửi sao thành công!');
+  // Thông báo admin
+  const toName = document.getElementById('modal-to').options[document.getElementById('modal-to').selectedIndex]?.text || '';
+  sendAdminNotif('give_stars', '⭐ Tặng sao mới', `${currentProfile?.full_name} tặng ${stars}★ cho ${toName.split('–')[0].trim()}`, { stars, target_name: toName });
   await loadQuota();
 }
 
@@ -2527,7 +2536,7 @@ function aTab(el) {
 let notifications = [];
 let notifChannel = null;
 
-function toggleNotifPanel() {
+async function toggleNotifPanel() {
   const panel = document.getElementById('notif-panel');
   const isOpen = panel.style.display === 'block';
   panel.style.display = isOpen ? 'none' : 'block';
@@ -2536,6 +2545,11 @@ function toggleNotifPanel() {
     notifications.forEach(n => n.read = true);
     saveNotifs();
     updateNotifBadge();
+    // Load + mark admin notifs read nếu là admin
+    if (currentProfile?.role === 'admin' || currentProfile?.role === 'manager') {
+      await loadAdminNotifs();
+      markAdminNotifsRead();
+    }
   }
 }
 
@@ -2580,6 +2594,94 @@ function updateNotifBadge() {
   } else {
     badge.style.display = 'none';
   }
+}
+
+// ═══════════════════════════════════════════════
+// ADMIN NOTIFICATIONS (realtime push to DB)
+// ═══════════════════════════════════════════════
+async function sendAdminNotif(type, title, body, extra = {}) {
+  try {
+    await api('POST', 'admin_notifications', {
+      type,
+      title,
+      body,
+      actor_id: currentUser?.id,
+      actor_name: currentProfile?.full_name || currentUser?.email,
+      target_id: extra.target_id || null,
+      target_name: extra.target_name || null,
+      extra,
+      is_read: false
+    });
+  } catch(e) { console.warn('Admin notif failed:', e.message); }
+}
+
+let adminNotifChannel = null;
+let adminUnreadCount = 0;
+
+async function loadAdminNotifs() {
+  try {
+    const data = await apiGet('admin_notifications?order=created_at.desc&limit=30');
+    renderAdminNotifs(data || []);
+    adminUnreadCount = (data || []).filter(n => !n.is_read).length;
+    updateAdminNotifBadge();
+    // Subscribe realtime
+    if (!adminNotifChannel) {
+      adminNotifChannel = sb.channel('admin_notifs')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'admin_notifications' }, payload => {
+          adminUnreadCount++;
+          updateAdminNotifBadge();
+          // Flash chuông admin
+          const btn = document.getElementById('notif-btn');
+          if (btn) { btn.style.background = 'var(--gold-pale)'; setTimeout(() => btn.style.background = '', 1500); }
+          // Thêm vào panel nếu đang mở
+          loadAdminNotifs();
+        })
+        .subscribe();
+    }
+  } catch(e) {}
+}
+
+function updateAdminNotifBadge() {
+  // Hiện badge đỏ trên chuông nếu là admin
+  if (!currentProfile || !['admin','manager'].includes(currentProfile.role)) return;
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  const total = adminUnreadCount + notifications.filter(n => !n.read).length;
+  if (total > 0) {
+    badge.style.display = 'block';
+    badge.textContent = total > 9 ? '9+' : total;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function renderAdminNotifs(data) {
+  const panel = document.getElementById('notif-list');
+  if (!panel) return;
+  if (!data.length) {
+    panel.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">Chưa có hoạt động</div>';
+    return;
+  }
+  const icons = { give_stars:'⭐', post_recognition:'✍️', redeem_reward:'🎁', new_signup:'👤' };
+  panel.innerHTML = data.map(n => `
+    <div style="padding:11px 14px;border-bottom:1px solid var(--bg2);${n.is_read?'opacity:.6':''}">
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <span style="font-size:18px">${icons[n.type]||'🔔'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:800;margin-bottom:2px">${esc(n.title)}</div>
+          <div style="font-size:11px;color:var(--text2)">${esc(n.body||'')}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">${timeAgo(n.created_at)}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function markAdminNotifsRead() {
+  try {
+    await api('PATCH', 'admin_notifications?is_read=eq.false', { is_read: true });
+    adminUnreadCount = 0;
+    updateAdminNotifBadge();
+  } catch(e) {}
 }
 
 function renderNotifs() {
@@ -3449,6 +3551,10 @@ async function doRedeem(rewardId) {
     // Cập nhật số dư trên store
     const newBal = currentProfile?.redeemable_points ?? 0;
     document.getElementById('store-balance').textContent = newBal + '★';
+
+    // Thông báo admin
+    const reward = storeRewards.find(x => x.id === rewardId || x.id === String(rewardId));
+    sendAdminNotif('redeem_reward', '🎁 Đổi quà mới', `${currentProfile?.full_name} đổi "${reward?.name || 'quà'}" · ${data.points_spent}★`, { reward_name: reward?.name, points: data.points_spent, voucher_code: code });
 
     // Show voucher modal
     showVoucherModal(code, validStr, data.points_spent);
