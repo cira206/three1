@@ -240,6 +240,9 @@ textarea.inf { resize:none; min-height:74px; }
 /* ── TABS ── */
 .tabs { display:flex; border-bottom:1.5px solid var(--black); margin-bottom:18px; }
 .tab { padding:8px 16px; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; color:var(--text3); border-bottom:2px solid transparent; margin-bottom:-1.5px; transition:.12s; }
+.stab { font-family:var(--F); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; padding:9px 20px; border:none; border-bottom:2px solid transparent; background:transparent; cursor:pointer; color:var(--text2); transition:.12s; }
+.stab:hover { color:var(--black); }
+.stab.active { color:var(--black); border-bottom:2.5px solid var(--black); }
 .tab:hover { color:var(--black); }
 .tab.active { color:var(--black); border-bottom-color:var(--black); }
 
@@ -545,11 +548,11 @@ textarea.inf { resize:none; min-height:74px; }
 
       <!-- Tabs lọc danh mục -->
       <div style="display:flex;gap:0;border-bottom:1.5px solid var(--black);margin-bottom:20px">
-        <button id="stab-all"     class="stab active" onclick="filterStore('all')"          style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2.5px solid var(--black);background:transparent;cursor:pointer">TẤT CẢ</button>
-        <button id="stab-drink"   class="stab"        onclick="filterStore('drink_voucher')" style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer">☕ ĐỒ UỐNG</button>
-        <button id="stab-merch"   class="stab"        onclick="filterStore('merchandise')"  style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer">🎁 TẶNG PHẨM</button>
-        <button id="stab-priv"    class="stab"        onclick="filterStore('privilege')"    style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer">⭐ QUYỀN LỢI</button>
-        <button id="stab-history" class="stab"        onclick="filterStore('history')"      style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer;margin-left:auto">📋 LỊCH SỬ ĐỔI</button>
+        <button id="stab-all"     class="stab active" onclick="filterStore('all')">TẤT CẢ</button>
+        <button id="stab-drink"   class="stab"        onclick="filterStore('drink_voucher')">☕ ĐỒ UỐNG</button>
+        <button id="stab-merch"   class="stab"        onclick="filterStore('merchandise')">🎁 TẶNG PHẨM</button>
+        <button id="stab-priv"    class="stab"        onclick="filterStore('privilege')">⭐ QUYỀN LỢI</button>
+        <button id="stab-history" class="stab"        onclick="filterStore('history')" style="margin-left:auto">📋 LỊCH SỬ ĐỔI</button>
       </div>
 
       <!-- Store grid -->
@@ -2349,74 +2352,63 @@ async function deleteBranch(id, name) {
 // ADMIN: APPROVE / REJECT / PROMOTE / LOGO
 // ═══════════════════════════════════════════════
 async function sendApprovalEmail(email, name) {
+  // Thử qua Supabase RPC trước (tránh CORS)
   try {
+    const { data, error } = await sb.rpc('send_approval_email', { p_email: email, p_name: name });
+    if (!error && data?.success) {
+      console.log('✅ Email gửi qua RPC OK');
+      return true;
+    }
+    console.warn('RPC email failed, trying direct...', error);
+  } catch(e) {
+    console.warn('RPC email exception:', e.message);
+  }
+  // Fallback: gọi Resend trực tiếp
+  return await sendApprovalEmailDirect(email, name);
+}
+
+async function sendApprovalEmailDirect(email, name) {
+  try {
+    const html = `<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#F7F5F2;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0"><tr><td align="center">
+<table width="520" cellpadding="0" cellspacing="0" style="background:#FFF;border:2px solid #0A0A0A">
+<tr><td style="background:#0A0A0A;padding:28px 36px;text-align:center">
+  <div style="color:#FFF;font-size:13px;font-weight:800;letter-spacing:.2em">THREE O'CLOCK</div>
+  <div style="color:#A8842C;font-size:11px;letter-spacing:.15em;margin-top:4px">STARWORK PLATFORM</div>
+</td></tr>
+<tr><td style="padding:36px">
+  <div style="font-size:22px;font-weight:800;margin-bottom:6px">Chào mừng, ${name}! 🎉</div>
+  <div style="width:40px;height:3px;background:#A8842C;margin-bottom:20px"></div>
+  <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 16px">Tài khoản <strong>StarWork</strong> của bạn tại <strong>THREE O'CLOCK</strong> đã được Admin duyệt!</p>
+  <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 24px">Từ bây giờ bạn có thể đăng nhập để ghi nhận và cảm ơn đồng đội.</p>
+  <div style="text-align:center;margin:24px 0">
+    <a href="https://threeoclock.vercel.app" style="background:#0A0A0A;color:#FFF;padding:14px 32px;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:.1em">ĐĂNG NHẬP NGAY →</a>
+  </div>
+  <div style="background:#F7F5F2;border-left:3px solid #A8842C;padding:14px 16px;margin-top:20px">
+    <div style="font-size:11px;font-weight:800;color:#A8842C;margin-bottom:4px">TÀI KHOẢN ĐĂNG NHẬP</div>
+    <div style="font-size:13px;font-weight:600">${email}</div>
+  </div>
+</td></tr>
+<tr><td style="background:#F7F5F2;border-top:1px solid #D8D0C4;padding:16px 36px;text-align:center">
+  <div style="font-size:11px;color:#9A9490">THREE O'CLOCK · StarWork · Email tự động, vui lòng không reply.</div>
+</td></tr>
+</table></td></tr></table></body></html>`;
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: {
-        'Authorization': 'Bearer re_TC5hv3hU_6r1tY1rYdf1AyUW12Fya79xA',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: 'StarWork <noreply@threeoclock.vn>',
-        to: [email],
-        subject: '🎉 Tài khoản StarWork của bạn đã được duyệt!',
-        html: `<!DOCTYPE html>
-<html lang="vi">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#F7F5F2;font-family:'Helvetica Neue',Arial,sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0">
-    <tr><td align="center">
-      <table width="520" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:2px solid #0A0A0A">
-        <!-- Header -->
-        <tr><td style="background:#0A0A0A;padding:28px 36px;text-align:center">
-          <div style="color:#FFFFFF;font-size:13px;font-weight:800;letter-spacing:.2em;text-transform:uppercase">THREE O'CLOCK</div>
-          <div style="color:#A8842C;font-size:11px;font-weight:600;letter-spacing:.15em;margin-top:4px">STARWORK PLATFORM</div>
-        </td></tr>
-        <!-- Body -->
-        <tr><td style="padding:36px 36px 28px">
-          <div style="font-size:22px;font-weight:800;color:#0A0A0A;margin-bottom:6px">Chào mừng, ${name}! 🎉</div>
-          <div style="width:40px;height:3px;background:#A8842C;margin-bottom:22px"></div>
-          <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 18px">
-            Tài khoản <strong>StarWork</strong> của bạn tại <strong>THREE O'CLOCK</strong> đã được Admin duyệt thành công!
-          </p>
-          <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 28px">
-            Từ bây giờ bạn có thể đăng nhập để ghi nhận và cảm ơn đồng đội, theo dõi bảng xếp hạng, và tham gia vào văn hóa doanh nghiệp của chúng ta.
-          </p>
-          <div style="text-align:center;margin:28px 0">
-            <a href="https://threeoclock.vercel.app" style="background:#0A0A0A;color:#FFFFFF;padding:14px 32px;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;display:inline-block">
-              Đăng nhập ngay →
-            </a>
-          </div>
-          <div style="background:#F7F5F2;border-left:3px solid #A8842C;padding:14px 16px;margin-top:10px">
-            <div style="font-size:11px;font-weight:800;color:#A8842C;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">Tài khoản đăng nhập</div>
-            <div style="font-size:13px;color:#0A0A0A;font-weight:600">${email}</div>
-          </div>
-        </td></tr>
-        <!-- Footer -->
-        <tr><td style="background:#F7F5F2;border-top:1.5px solid #D8D0C4;padding:18px 36px;text-align:center">
-          <div style="font-size:11px;color:#9A9490;letter-spacing:.08em">THREE O'CLOCK · StarWork Platform</div>
-          <div style="font-size:10px;color:#C0BDB9;margin-top:4px">Email này được gửi tự động, vui lòng không reply.</div>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`
-      })
+      headers: { 'Authorization': 'Bearer re_TC5hv3hU_6r1tY1rYdf1AyUW12Fya79xA', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'StarWork <noreply@threeoclock.vn>', to: [email], subject: '🎉 Tài khoản StarWork của bạn đã được duyệt!', html })
     });
     const result = await res.json();
-    if (result.id) {
-      console.log('✅ Email gửi thành công:', result.id);
-      return true;
-    } else {
-      console.error('❌ Resend error:', result);
-      return false;
-    }
+    if (result.id) { console.log('✅ Email gửi trực tiếp OK:', result.id); return true; }
+    console.error('Resend error:', result);
+    return false;
   } catch(e) {
-    console.error('❌ Email error:', e);
+    console.error('Email direct error:', e.message);
     return false;
   }
 }
+
 
 async function approveUser(uid, name, email) {
   const { data } = await sb.rpc('approve_user', { p_user_id: uid });
