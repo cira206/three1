@@ -2440,13 +2440,7 @@ async function uploadLogo(input) {
   toast('✅ Đã cập nhật logo!');
 }
 
-function applyLogo(url) {
-  if (!url) return;
-  applyLogoEarly(url);
-  // Update preview in admin
-  const prev = document.getElementById('logo-preview');
-  if (prev) prev.innerHTML = `<img src="${url}" style="width:56px;height:56px;object-fit:contain">`;
-}
+
 
 async function loadAdminList() {
   const { data } = await sb.from('profiles').select('id,full_name,email,avatar_text,department,role').eq('is_approved', true).order('role');
@@ -2462,7 +2456,7 @@ async function loadAdminList() {
 }
 
 // Load logo on startup
-async async function loadLogo() {
+async function loadLogo() {
   try {
     const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
     if (data?.value) applyLogo(data.value);
@@ -2495,6 +2489,9 @@ function applyLogo(url) {
       el.replaceWith(img);
     }
   });
+  // Update preview in admin panel
+  const prev = document.getElementById('logo-preview');
+  if (prev) prev.innerHTML = `<img src="${url}" style="width:56px;height:56px;object-fit:contain">`;
 }
 
 // ═══════════════════════════════════════════════
@@ -2756,7 +2753,7 @@ function storeItemHTML(r, bal) {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto">
         <div style="font-size:20px;font-weight:900;color:${canAfford?'var(--gold)':'var(--text3)'}">${r.points_required}★</div>
         <button class="btn${canAfford?'':' btn-outline'}" style="font-size:11px;padding:7px 14px;${canAfford?'':'opacity:.6;cursor:not-allowed'}"
-          onclick="${canAfford ? `confirmRedeem('${r.id}',${r.points_required})` : ''}">
+          onclick="${canAfford ? 'confirmRedeem(\''+r.id+'\','+r.points_required+')' : ''}">
           ${canAfford ? 'Đổi →' : 'Chưa đủ ★'}
         </button>
       </div>
