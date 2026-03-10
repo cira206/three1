@@ -500,7 +500,7 @@ textarea.inf { resize:none; min-height:74px; }
 <body>
 
 <!-- ══ AUTH SCREEN ══ -->
-<div id="auth-screen" style="display:none">
+<div id="auth-screen">
   <div class="auth-box">
     <div class="auth-logo" id="auth-logo-area">
       <svg id="auth-logo-svg" width="44" height="44" viewBox="0 0 48 48" fill="none">
@@ -572,24 +572,6 @@ textarea.inf { resize:none; min-height:74px; }
 </div>
 
 <!-- ══ MAIN APP ══ -->
-<div id="app-loading" style="position:fixed;inset:0;background:#FFF;display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:14px">
-  <svg viewBox="0 0 48 48" fill="none" style="width:44px;height:44px">
-    <circle cx="24" cy="24" r="23" fill="#0A0A0A"/>
-    <circle cx="24" cy="24" r="20" stroke="white" stroke-width="1.2" stroke-dasharray="3.5 2.8" fill="none"/>
-    <ellipse cx="23.5" cy="27" rx="9.5" ry="7" fill="white"/>
-    <path d="M33 25.5 Q37.5 23 37 28" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-    <path d="M14 24.5 Q10.5 24.5 10.5 27.5 Q10.5 30.5 14 30" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/>
-    <rect x="19" y="19.5" width="9" height="3" rx="1.5" fill="white"/>
-    <circle cx="23.5" cy="19.5" r="2" fill="white"/>
-    <circle cx="23.5" cy="27" r="4.5" fill="#0A0A0A"/>
-    <circle cx="23.5" cy="27" r="4.5" stroke="white" stroke-width="0.6" fill="none"/>
-    <line x1="23.5" y1="27" x2="27" y2="27" stroke="white" stroke-width="1.1" stroke-linecap="round"/>
-    <line x1="23.5" y1="27" x2="23.5" y2="23.5" stroke="white" stroke-width="1.1" stroke-linecap="round"/>
-    <circle cx="23.5" cy="27" r="0.7" fill="white"/>
-  </svg>
-  <div style="font-size:11px;font-weight:800;letter-spacing:.2em;color:#0A0A0A">THREE O'CLOCK</div>
-  <div class="spinner" style="margin-top:4px"></div>
-</div>
 <div id="app">
   <!-- SIDEBAR -->
   <nav class="sidebar">
@@ -1386,8 +1368,6 @@ sb.auth.onAuthStateChange(async (event, session) => {
 
   // SIGNED_OUT thực sự (do logout, không phải do refresh page)
   if (event === 'SIGNED_OUT') {
-    const splashSO = document.getElementById('app-loading');
-    if (splashSO) splashSO.style.display = 'none';
     appLoaded = false;
     currentUser = null;
     currentProfile = null;
@@ -1395,10 +1375,6 @@ sb.auth.onAuthStateChange(async (event, session) => {
     document.getElementById('app').classList.remove('visible');
     return;
   }
-
-  // Ẩn loading splash
-  const splash = document.getElementById('app-loading');
-  if (splash) splash.style.display = 'none';
 
   // INITIAL_SESSION không có session = chưa đăng nhập -> show login
   if (event === 'INITIAL_SESSION' && !session) {
