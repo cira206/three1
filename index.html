@@ -1287,6 +1287,9 @@ let _started = false;
 sb.auth.onAuthStateChange(async (event, session) => {
   console.log('[Auth]', event, session?.user?.email ?? 'no session');
 
+  // F5: _started reset về false mỗi lần page load (biến JS luôn reset khi reload)
+  // Nên không cần lo _started=true còn sót từ lần trước
+
   if (event === 'SIGNED_OUT') {
     _started = false;
     currentUser = null; currentProfile = null; currentSession = null;
@@ -1299,16 +1302,23 @@ sb.auth.onAuthStateChange(async (event, session) => {
     return;
   }
 
-  if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session?.user && !_started) {
+  if (event === 'INITIAL_SESSION') {
+    if (session?.user && !_started) {
+      _started = true;
+      currentUser = session.user;
+      currentSession = session;
+      await loadApp();
+    } else if (!session) {
+      document.getElementById('auth-screen').style.display = 'flex';
+    }
+    return;
+  }
+
+  if (event === 'SIGNED_IN' && session?.user && !_started) {
     _started = true;
     currentUser = session.user;
     currentSession = session;
     await loadApp();
-    return;
-  }
-
-  if (event === 'INITIAL_SESSION' && !session) {
-    document.getElementById('auth-screen').style.display = 'flex';
     return;
   }
 
@@ -1323,8 +1333,14 @@ async function loadApp() {
   if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Đăng nhập →'; }
 
   try {
-    // Dùng REST + token từ session để tránh SDK query bị treo
-    const token = currentSession?.access_token || SUPABASE_KEY;
+    // Lấy session mới nhất, đồng thời set lại cho SDK để các query sau dùng đúng token
+    const { data: { session: latestSession } } = await sb.auth.getSession();
+    const sess = latestSession || currentSession;
+    if (sess?.access_token && sess?.refresh_token) {
+      await sb.auth.setSession({ access_token: sess.access_token, refresh_token: sess.refresh_token });
+    }
+    const token = sess?.access_token || SUPABASE_KEY;
+    console.log('[loadApp] token:', token === SUPABASE_KEY ? 'ANON(bad)' : 'USER(ok)');
     const res = await fetch(
       SUPABASE_URL + '/rest/v1/profiles?id=eq.' + currentUser.id + '&select=*&limit=1',
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token } }
