@@ -564,6 +564,33 @@ textarea.inf { resize:none; min-height:74px; }
   .main-area { margin-left:0; padding-bottom:72px; }
 }
 
+/* Admin tabs mobile */
+@media (max-width:768px) {
+  .admin-tabs { gap:0 !important; border-bottom:1.5px solid var(--black); }
+  .admin-tabs::-webkit-scrollbar { display:none; }
+  .admin-tabs .tab {
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    padding:8px 10px;
+    white-space:nowrap;
+    flex-shrink:0;
+    font-size:9px;
+    border-bottom:none;
+    border-right:none;
+    min-width:44px;
+  }
+  .admin-tabs .tab.active {
+    border-bottom:2px solid var(--black) !important;
+    background:var(--bg2);
+  }
+  .tab-icon { font-size:16px; line-height:1; }
+  .tab-txt { font-size:9px; font-weight:700; letter-spacing:.02em; }
+}
+@media (min-width:769px) {
+  .tab-icon { display:none; }
+}
+
 /* Mobile podium card */
 #lb-podium-mobile { display:none; }
 @media (max-width:768px) {
@@ -711,7 +738,10 @@ textarea.inf { resize:none; min-height:74px; }
   <!-- MAIN -->
   <div class="main">
     <header class="topbar">
-      <div class="topbar-title" id="page-title">Trang Chủ</div>
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="go('feed')">
+        <img id="topbar-logo" src="" alt="Logo" style="height:32px;width:32px;object-fit:contain;border-radius:4px;display:none">
+        <div class="topbar-title" id="page-title">Trang Chủ</div>
+      </div>
       <div class="mobile-user-chip" onclick="go('profile')" style="display:none;align-items:center;gap:6px;cursor:pointer">
         <div class="uav" id="topbar-av" style="width:26px;height:26px;font-size:10px">?</div>
         <span id="topbar-stars" style="font-size:11px;font-weight:800;color:var(--gold)">0★</span>
@@ -1053,16 +1083,16 @@ textarea.inf { resize:none; min-height:74px; }
         <div class="sb" style="border-bottom:3px solid var(--red)"><div class="sbl">Cảnh báo</div><div class="sbv" style="color:var(--red)" id="adm-flags">—</div><div class="sbi">⚠</div></div>
       </div>
       <!-- TABS -->
-      <div class="tabs" style="margin-bottom:18px">
-        <div class="tab active" onclick="adminTab('pending',this)">⏳ Chờ duyệt</div>
-        <div class="tab" onclick="adminTab('employees',this)">👥 Nhân viên</div>
-        <div class="tab" onclick="adminTab('depts',this)">🏢 Phòng ban</div>
-        <div class="tab" onclick="adminTab('logo',this)">🖼 Logo</div>
-        <div class="tab" onclick="adminTab('admins',this)">★ Admin</div>
-        <div class="tab" onclick="adminTab('flags',this)">⚠ Cảnh báo</div>
-        <div class="tab" onclick="adminTab('fraud',this)">🔍 Chống gian lận</div>
-        <div class="tab" onclick="adminTab('history',this)">📋 Lịch sử</div>
-        <div class="tab" onclick="adminTab('rewards',this)">🎁 Đổi quà</div>
+      <div class="tabs admin-tabs" style="margin-bottom:18px;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+        <div class="tab active" onclick="adminTab('pending',this)"><span class="tab-icon">⏳</span><span class="tab-txt">Chờ duyệt</span></div>
+        <div class="tab" onclick="adminTab('employees',this)"><span class="tab-icon">👥</span><span class="tab-txt">Nhân viên</span></div>
+        <div class="tab" onclick="adminTab('depts',this)"><span class="tab-icon">🏢</span><span class="tab-txt">Phòng ban</span></div>
+        <div class="tab" onclick="adminTab('logo',this)"><span class="tab-icon">🖼</span><span class="tab-txt">Logo</span></div>
+        <div class="tab" onclick="adminTab('admins',this)"><span class="tab-icon">★</span><span class="tab-txt">Admin</span></div>
+        <div class="tab" onclick="adminTab('flags',this)"><span class="tab-icon">⚠</span><span class="tab-txt">Cảnh báo</span></div>
+        <div class="tab" onclick="adminTab('fraud',this)"><span class="tab-icon">🔍</span><span class="tab-txt">Gian lận</span></div>
+        <div class="tab" onclick="adminTab('history',this)"><span class="tab-icon">📋</span><span class="tab-txt">Lịch sử</span></div>
+        <div class="tab" onclick="adminTab('rewards',this)"><span class="tab-icon">🎁</span><span class="tab-txt">Đổi quà</span></div>
       </div>
 
       <!-- PENDING USERS -->
@@ -1429,6 +1459,9 @@ function applyLogoEarly(url) {
     img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
     el.replaceWith(img);
   });
+  // Topbar logo
+  const topbarLogo = document.getElementById('topbar-logo');
+  if (topbarLogo) { topbarLogo.src = url; topbarLogo.style.display = 'block'; }
 }
 
 // ═══════════════════════════════════════════════
@@ -3072,31 +3105,31 @@ async function loadLogo() {
 
 function applyLogo(url) {
   if (!url) return;
-  // Update tất cả logo trên page (auth + sidebar)
+  // Auth logo
   const authLogo = document.getElementById('auth-logo-svg') || document.getElementById('auth-logo-img');
   if (authLogo) {
-    if (authLogo.tagName === 'IMG') {
-      authLogo.src = url;
-    } else {
+    if (authLogo.tagName === 'IMG') { authLogo.src = url; }
+    else {
       const img = document.createElement('img');
-      img.id = 'auth-logo-svg';
-      img.src = url;
+      img.id = 'auth-logo-svg'; img.src = url;
       img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
       authLogo.replaceWith(img);
     }
   }
+  // Brand logos (sidebar)
   document.querySelectorAll('.brand-logo').forEach(el => {
-    if (el.tagName === 'IMG') {
-      el.src = url;
-    } else {
+    if (el.tagName === 'IMG') { el.src = url; }
+    else {
       const img = document.createElement('img');
-      img.src = url;
-      img.className = 'brand-logo';
+      img.src = url; img.className = 'brand-logo';
       img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
       el.replaceWith(img);
     }
   });
-  // Update preview in admin panel
+  // Topbar logo
+  const topbarLogo = document.getElementById('topbar-logo');
+  if (topbarLogo) { topbarLogo.src = url; topbarLogo.style.display = 'block'; }
+  // Admin preview
   const prev = document.getElementById('logo-preview');
   if (prev) prev.innerHTML = `<img src="${url}" style="width:56px;height:56px;object-fit:contain">`;
 }
