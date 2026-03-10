@@ -1160,59 +1160,70 @@ sb.auth.onAuthStateChange(async (event, session) => {
 });
 
 async function loadApp() {
-  // Load profile first to check approval
-  const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-  currentProfile = profile;
-
-  // Reset login button luôn (phòng trường hợp loadApp được gọi từ doLogin)
+  // Reset login button ngay lập tức
   const loginBtn = document.getElementById('btn-login');
   if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Đăng nhập →'; }
 
-  // Check if approved
-  if (!profile || !profile.is_approved) {
-    await sb.auth.signOut();
-    appLoaded = false;
-    document.getElementById('auth-screen').style.display = 'flex';
-    document.getElementById('login-form').style.display = 'none';
-    document.getElementById('register-form').style.display = 'none';
-    document.getElementById('pending-msg').style.display = 'block';
-    document.querySelectorAll('.auth-tab').forEach(t => t.style.display = 'none');
-    return;
-  }
+  try {
+    // Load profile first to check approval
+    const { data: profile, error: profileErr } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+    currentProfile = profile;
 
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app').classList.add('visible');
+    // Check if approved
+    if (profileErr || !profile || !profile.is_approved) {
+      await sb.auth.signOut();
+      appLoaded = false;
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('login-form').style.display = 'none';
+      document.getElementById('register-form').style.display = 'none';
+      document.getElementById('pending-msg').style.display = 'block';
+      document.querySelectorAll('.auth-tab').forEach(t => t.style.display = 'none');
+      return;
+    }
 
-  // Update sidebar
-  if (profile) {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+
+    // Update sidebar
     document.getElementById('sidebar-av').textContent    = profile.avatar_text || '?';
     document.getElementById('sidebar-name').textContent  = profile.full_name;
     document.getElementById('sidebar-dept').textContent  = profile.branch ? profile.branch + ' · ' + profile.department : profile.department;
-    document.getElementById('sidebar-stars').textContent = profile.total_stars + '★';
+    document.getElementById('sidebar-stars').textContent = (profile.total_stars || 0) + '★';
 
-    // Show admin nav if admin/manager
     if (profile.role === 'admin' || profile.role === 'manager') {
       document.getElementById('admin-nav-group').style.display = 'block';
       document.getElementById('admin-nav-item').style.display  = 'flex';
     }
+
+    // Load data — mỗi cái bọc try/catch riêng, lỗi 1 cái không làm vỡ cái khác
+    loadLogo();
+    await Promise.allSettled([
+      loadFeed().catch(e => console.warn('loadFeed error:', e)),
+      loadQuota().catch(e => console.warn('loadQuota error:', e)),
+      loadMiniLeaderboard().catch(e => console.warn('loadMiniLeaderboard error:', e)),
+      loadActiveChallenges().catch(e => console.warn('loadActiveChallenges error:', e)),
+      loadEmployees().catch(e => console.warn('loadEmployees error:', e)),
+    ]);
+
+    setupNotifSubscription();
+
+    realtimeChannel = sb.channel('recognitions-feed')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'recognitions' }, (payload) => {
+        prependPost(payload.new);
+        updateTicker();
+      })
+      .subscribe();
+
+    updateTicker();
+
+  } catch(e) {
+    // Lỗi nghiêm trọng — reset về màn hình đăng nhập
+    console.error('loadApp critical error:', e);
+    appLoaded = false;
+    await sb.auth.signOut();
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app').classList.remove('visible');
   }
-
-  // Load data
-  loadLogo();
-  await Promise.all([loadFeed(), loadQuota(), loadMiniLeaderboard(), loadActiveChallenges(), loadEmployees()]);
-
-  // Setup notifications for admin
-  setupNotifSubscription();
-
-  // Realtime subscription
-  realtimeChannel = sb.channel('recognitions-feed')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'recognitions' }, (payload) => {
-      prependPost(payload.new);
-      updateTicker();
-    })
-    .subscribe();
-
-  updateTicker();
 }
 
 // ═══════════════════════════════════════════════
@@ -2420,10 +2431,12 @@ async function uploadLogo(input) {
   const { error } = await sb.storage.from('logos').upload(path, file, { upsert: true });
   if (error) { toast('❌ Upload lỗi: ' + error.message); return; }
   const { data: url } = sb.storage.from('logos').getPublicUrl(path);
+  // Add cache-bust timestamp so browser loads fresh image
+  const publicUrl = url.publicUrl + '?t=' + Date.now();
   // Save URL to settings
-  await sb.from('app_settings').upsert({ key: 'logo_url', value: url.publicUrl, updated_at: new Date().toISOString() });
+  await sb.from('app_settings').upsert({ key: 'logo_url', value: publicUrl, updated_at: new Date().toISOString() });
   // Update logo everywhere on page
-  applyLogo(url.publicUrl);
+  applyLogo(publicUrl);
   toast('✅ Đã cập nhật logo!');
 }
 
@@ -2449,9 +2462,39 @@ async function loadAdminList() {
 }
 
 // Load logo on startup
-async function loadLogo() {
-  const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
-  if (data?.value) applyLogo(data.value);
+async async function loadLogo() {
+  try {
+    const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
+    if (data?.value) applyLogo(data.value);
+  } catch(e) { console.warn('loadLogo error:', e); }
+}
+
+function applyLogo(url) {
+  if (!url) return;
+  // Update tất cả logo trên page (auth + sidebar)
+  const authLogo = document.getElementById('auth-logo-svg') || document.getElementById('auth-logo-img');
+  if (authLogo) {
+    if (authLogo.tagName === 'IMG') {
+      authLogo.src = url;
+    } else {
+      const img = document.createElement('img');
+      img.id = 'auth-logo-svg';
+      img.src = url;
+      img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
+      authLogo.replaceWith(img);
+    }
+  }
+  document.querySelectorAll('.brand-logo').forEach(el => {
+    if (el.tagName === 'IMG') {
+      el.src = url;
+    } else {
+      const img = document.createElement('img');
+      img.src = url;
+      img.className = 'brand-logo';
+      img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
+      el.replaceWith(img);
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════
