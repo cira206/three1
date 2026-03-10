@@ -1171,6 +1171,23 @@ let currentUser = null;
 let currentProfile = null;
 let currentSession = null;
 let realtimeChannel = null;
+let _token = null; // access token hiện tại
+
+// Helper: fetch REST API với token
+async function sbGet(table, params) {
+  const isRpc = table.startsWith('rpc/');
+  const url = SUPABASE_URL + '/rest/v1/' + table + (params ? '?' + params : '');
+  const res = await fetch(url, {
+    method: isRpc ? 'POST' : 'GET',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + (_token || SUPABASE_KEY),
+      'Content-Type': 'application/json'
+    },
+    body: isRpc ? '{}' : undefined
+  });
+  return res.json();
+}
 
 // ═══════════════════════════════════════════════
 // AUTH
@@ -1325,6 +1342,8 @@ sb.auth.onAuthStateChange(async (event, session) => {
   if (event === 'TOKEN_REFRESHED' && session) {
     currentSession = session;
     currentUser = session.user;
+    _token = session.access_token;
+    console.log('[Auth] Token refreshed');
   }
 });
 
@@ -1336,11 +1355,9 @@ async function loadApp() {
     // Lấy session mới nhất, đồng thời set lại cho SDK để các query sau dùng đúng token
     const { data: { session: latestSession } } = await sb.auth.getSession();
     const sess = latestSession || currentSession;
-    if (sess?.access_token && sess?.refresh_token) {
-      await sb.auth.setSession({ access_token: sess.access_token, refresh_token: sess.refresh_token });
-    }
-    const token = sess?.access_token || SUPABASE_KEY;
-    console.log('[loadApp] token:', token === SUPABASE_KEY ? 'ANON(bad)' : 'USER(ok)');
+    _token = sess?.access_token || SUPABASE_KEY;
+    console.log('[loadApp] token:', _token === SUPABASE_KEY ? 'ANON(bad)' : 'USER(ok)');
+    const token = _token;
     const res = await fetch(
       SUPABASE_URL + '/rest/v1/profiles?id=eq.' + currentUser.id + '&select=*&limit=1',
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token } }
@@ -1449,7 +1466,12 @@ async function loadEmployees() {
 // QUOTA
 // ═══════════════════════════════════════════════
 async function loadQuota() {
-  const { data } = await sb.rpc('get_my_quota');
+  const rpcRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_my_quota', {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_token||SUPABASE_KEY), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_user_id: currentUser.id })
+  }).catch(() => null);
+  const data = rpcRes ? await rpcRes.json() : null;
   if (!data) return;
   const used = data.used || 0;
   const max  = data.max  || 5;
@@ -1473,11 +1495,9 @@ async function loadFeed() {
   const fl = document.getElementById('fl');
   fl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
-  const { data: recs, error } = await sb
-    .from('recognitions')
-    .select(`*, from_profile:profiles!from_user_id(full_name, avatar_text, department), to_profile:profiles!to_user_id(full_name, avatar_text, department)`)
-    .order('created_at', { ascending: false })
-    .limit(30);
+  const arr = await sbGet('recognitions', 'select=*,from_profile:profiles!from_user_id(full_name,avatar_text,department),to_profile:profiles!to_user_id(full_name,avatar_text,department)&order=created_at.desc&limit=30');
+  const recs = Array.isArray(arr) ? arr : null;
+  const error = Array.isArray(arr) ? null : arr;
 
   if (error || !recs?.length) {
     fl.innerHTML = '<div class="empty-state"><div class="empty-icon">◈</div><div class="empty-txt">Chưa có lời cảm ơn nào</div><div style="font-size:12px;margin-top:8px;color:var(--text3)">Hãy là người đầu tiên ghi nhận đồng đội!</div></div>';
@@ -1543,7 +1563,12 @@ async function prependPost(r) {
 // MINI LEADERBOARD
 // ═══════════════════════════════════════════════
 async function loadMiniLeaderboard() {
-  const { data } = await sb.rpc('get_leaderboard', { p_limit: 5 });
+  const rpcRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_leaderboard', {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_token||SUPABASE_KEY), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_limit: 5 })
+  }).catch(() => null);
+  const data = rpcRes ? await rpcRes.json() : null;
   const el = document.getElementById('mini-lb');
   if (!data?.length) { el.innerHTML = '<div class="empty-state" style="padding:20px"><div class="empty-txt">Chưa có dữ liệu</div></div>'; return; }
   el.innerHTML = data.map((p,i) => `
