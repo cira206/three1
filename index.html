@@ -1142,8 +1142,8 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storageKey: 'sw-auth'
+    detectSessionInUrl: false,
+    flowType: 'pkce'
   }
 });
 
@@ -1280,10 +1280,8 @@ async function doLogin() {
     }
 
     if (data?.user) {
-      // Đăng nhập thành công — loadApp trực tiếp, không chờ onAuthStateChange
-      appLoaded = true;
-      currentUser = data.user;
-      await loadApp();
+      // SIGNED_IN event sẽ tự fire và gọi loadApp
+      // Không cần gọi loadApp() ở đây nữa
     }
   } catch(e) {
     btn.disabled = false; btn.textContent = 'Đăng nhập →';
