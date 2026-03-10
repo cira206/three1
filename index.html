@@ -2560,14 +2560,17 @@ async function toggleNotifPanel() {
   const isOpen = panel.style.display === 'block';
   panel.style.display = isOpen ? 'none' : 'block';
   if (!isOpen) {
-    // Mark all as read when opening
-    notifications.forEach(n => n.read = true);
-    saveNotifs();
-    updateNotifBadge();
-    // Load + mark admin notifs read nếu là admin
     if (currentProfile?.role === 'admin' || currentProfile?.role === 'manager') {
+      // Admin: load và hiện admin notifs
       await loadAdminNotifs();
       markAdminNotifsRead();
+      adminUnreadCount = 0;
+      updateAdminNotifBadge();
+    } else {
+      // User thường: hiện local notifs
+      notifications.forEach(n => n.read = true);
+      saveNotifs();
+      updateNotifBadge();
     }
   }
 }
@@ -2631,6 +2634,11 @@ async function sendAdminNotif(type, title, body, extra = {}) {
       extra,
       is_read: false
     });
+    // Nếu là admin thì tăng badge luôn
+    if (currentProfile?.role === 'admin' || currentProfile?.role === 'manager') {
+      adminUnreadCount++;
+      updateAdminNotifBadge();
+    }
   } catch(e) { console.warn('Admin notif failed:', e.message); }
 }
 
@@ -2647,13 +2655,19 @@ async function loadAdminNotifs() {
     if (!adminNotifChannel) {
       adminNotifChannel = sb.channel('admin_notifs')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'admin_notifications' }, payload => {
-          adminUnreadCount++;
-          updateAdminNotifBadge();
-          // Flash chuông admin
-          const btn = document.getElementById('notif-btn');
-          if (btn) { btn.style.background = 'var(--gold-pale)'; setTimeout(() => btn.style.background = '', 1500); }
-          // Thêm vào panel nếu đang mở
-          loadAdminNotifs();
+          // Chỉ tăng nếu không phải mình vừa gửi
+          const isOwnAction = payload.new?.actor_id === currentUser?.id;
+          if (!isOwnAction) {
+            adminUnreadCount++;
+            updateAdminNotifBadge();
+            // Flash chuông
+            const btn = document.getElementById('notif-btn');
+            if (btn) {
+              btn.style.background = 'var(--gold-pale)';
+              btn.style.transform = 'scale(1.15)';
+              setTimeout(() => { btn.style.background = ''; btn.style.transform = ''; }, 1200);
+            }
+          }
         })
         .subscribe();
     }
