@@ -1363,10 +1363,24 @@ async function loadBranchesForRegister() {
 
 let appLoaded = false;
 
+// ── INIT: Check session ngay khi load (cách đáng tin cậy nhất) ──
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session?.user) {
+    // Có session trong localStorage → load app
+    appLoaded = true;
+    currentUser = session.user;
+    await loadApp();
+  } else {
+    // Chưa đăng nhập → show login
+    document.getElementById('auth-screen').style.display = 'flex';
+  }
+})();
+
+// ── onAuthStateChange: chỉ xử lý login/logout events ──
 sb.auth.onAuthStateChange(async (event, session) => {
   console.log('[Auth]', event, session?.user?.email);
 
-  // SIGNED_OUT thực sự (do logout, không phải do refresh page)
   if (event === 'SIGNED_OUT') {
     appLoaded = false;
     currentUser = null;
@@ -1376,21 +1390,13 @@ sb.auth.onAuthStateChange(async (event, session) => {
     return;
   }
 
-  // INITIAL_SESSION không có session = chưa đăng nhập -> show login
-  if (event === 'INITIAL_SESSION' && !session) {
-    document.getElementById('auth-screen').style.display = 'flex';
-    return;
-  }
-
-  // Có session hợp lệ -> load app (nếu chưa load)
-  if (session?.user && !appLoaded) {
+  if (event === 'SIGNED_IN' && session?.user && !appLoaded) {
     appLoaded = true;
     currentUser = session.user;
     await loadApp();
     return;
   }
 
-  // Token refresh — chỉ cập nhật user, không reload app
   if (event === 'TOKEN_REFRESHED' && session?.user) {
     currentUser = session.user;
   }
@@ -1407,21 +1413,35 @@ async function loadApp() {
     currentProfile = profile;
 
     // Check if approved
-    if (profileErr || !profile) {
+    if (profileErr) {
       console.error('❌ PROFILE ERROR:', JSON.stringify(profileErr));
-      // Session có nhưng profile lỗi → clear session, cho login lại
-      appLoaded = false;
-      await sb.auth.signOut();
-      currentUser = null;
-      currentProfile = null;
-      document.getElementById('auth-screen').style.display = 'flex';
-      document.getElementById('app').classList.remove('visible');
+      // Chỉ signOut nếu lỗi 401 (session thực sự invalid)
+      // Lỗi khác (network, timeout) → KHÔNG signOut, chỉ báo lỗi
+      const isAuthError = profileErr.code === '401' || profileErr.message?.includes('JWT') || profileErr.message?.includes('invalid claim');
+      if (isAuthError) {
+        appLoaded = false;
+        await sb.auth.signOut();
+        currentUser = null; currentProfile = null;
+        document.getElementById('auth-screen').style.display = 'flex';
+        document.getElementById('app').classList.remove('visible');
+      }
       const loginErrEl = document.getElementById('login-err');
       if (loginErrEl) {
-        loginErrEl.textContent = profileErr
-          ? '⚠️ Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'
-          : '⚠️ Không tìm thấy tài khoản. Liên hệ admin.';
+        loginErrEl.textContent = '⚠️ Lỗi tải tài khoản. Vui lòng thử lại.';
         loginErrEl.style.display = 'block';
+      }
+      return;
+    }
+    if (!profile) {
+      appLoaded = false;
+      await sb.auth.signOut();
+      currentUser = null; currentProfile = null;
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('app').classList.remove('visible');
+      const loginErrEl2 = document.getElementById('login-err');
+      if (loginErrEl2) {
+        loginErrEl2.textContent = '⚠️ Không tìm thấy tài khoản. Liên hệ admin.';
+        loginErrEl2.style.display = 'block';
       }
       return;
     }
