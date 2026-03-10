@@ -501,21 +501,16 @@ textarea.inf { resize:none; min-height:74px; }
   /* Ẩn filter chi nhánh */
   #branch-tabs { display:none !important; }
 
-  /* Podium mobile */
-  .lbpodium { flex-direction:row; gap:0; margin-bottom:16px; }
-  .pi { padding:14px 8px; }
-  .pav { width:40px; height:40px; font-size:14px; }
-  .pn { font-size:11px; font-weight:800; text-align:center; max-width:70px; word-break:break-word; }
-  .pd { font-size:10px; }
-  .ps { font-size:18px; }
+  /* Ẩn podium cũ, render lại bằng JS */
+  .lbpodium { display:none !important; }
 
-  /* Table BXH gọn hơn */
+  /* Table BXH gọn hơn - ẩn cột bộ phận và bài đăng */
   .lb-tbl th:nth-child(3),
   .lb-tbl td:nth-child(3),
   .lb-tbl th:nth-child(5),
   .lb-tbl td:nth-child(5) { display:none; }
-  .lb-tbl { font-size:12px; }
-  .lb-tbl td, .lb-tbl th { padding:10px 8px; }
+  .lb-tbl { font-size:13px; }
+  .lb-tbl td, .lb-tbl th { padding:11px 10px; }
 }
 
 /* ── MOBILE BOTTOM NAV REDESIGN ── */
@@ -528,7 +523,7 @@ textarea.inf { resize:none; min-height:74px; }
     padding:0; z-index:50;
     background:#fff;
     overflow-x:auto;
-    box-shadow: 0 -2px 12px rgba(0,0,0,.08);
+    box-shadow: 0 -2px 16px rgba(0,0,0,.10);
   }
   .sidebar > *:not(.nav) { display:none !important; }
   .nav {
@@ -537,7 +532,6 @@ textarea.inf { resize:none; min-height:74px; }
     width:100%;
     gap:0;
     padding:0;
-    overflow-x:auto;
     scrollbar-width:none;
   }
   .nav::-webkit-scrollbar { display:none; }
@@ -547,25 +541,52 @@ textarea.inf { resize:none; min-height:74px; }
     align-items:center;
     justify-content:center;
     flex:1;
-    min-width:52px;
+    min-width:48px;
     padding:8px 4px 10px;
     border-left:none !important;
     border-top:2px solid transparent;
     border-radius:0;
     margin-bottom:0;
     gap:3px;
+    color:var(--text3);
   }
   .ni.active {
     background:#fff !important;
-    color:var(--gold) !important;
-    border-top:2px solid var(--gold) !important;
+    color:var(--black) !important;
+    border-top:2px solid var(--black) !important;
+    font-weight:800;
   }
-  .ni:hover { background:#f9f6f0; }
-  .ni-icon { font-size:20px !important; line-height:1; }
-  .ni-short { font-size:9px !important; font-weight:700 !important; letter-spacing:.03em; }
+  .ni:hover { background:#f5f5f5; }
+  .ni-icon { font-size:19px !important; line-height:1; }
+  .ni-short { font-size:9px !important; font-weight:700 !important; letter-spacing:.02em; color:inherit; }
   .ni-full { display:none !important; }
   .sidebar-user { display:none !important; }
-  .main-area { margin-left:0; padding-bottom:70px; }
+  .main-area { margin-left:0; padding-bottom:72px; }
+}
+
+/* Mobile podium card */
+#lb-podium-mobile { display:none; }
+@media (max-width:768px) {
+  #lb-podium-mobile {
+    display:flex;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .pm-card {
+    flex:1;
+    border:1.5px solid var(--black);
+    padding:12px 8px;
+    text-align:center;
+    position:relative;
+    background:#fff;
+  }
+  .pm-card.pm-1 { background:var(--gold-pale); border-color:var(--gold); }
+  .pm-rank { font-size:9px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:var(--text3); margin-bottom:6px; }
+  .pm-card.pm-1 .pm-rank { color:var(--gold); }
+  .pm-avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:800; margin:0 auto 7px; border:1.5px solid var(--black); }
+  .pm-name { font-size:11px; font-weight:800; line-height:1.3; margin-bottom:4px; }
+  .pm-stars { font-size:17px; font-weight:900; color:var(--gold); }
+  .pm-medal { font-size:16px; display:block; margin-bottom:2px; }
 }
 </style>
 </head>
@@ -799,6 +820,8 @@ textarea.inf { resize:none; min-height:74px; }
       <div class="lbpodium" id="lb-podium">
         <div class="loading" style="height:160px;flex:1"><div class="spinner"></div></div>
       </div>
+      <!-- Mobile podium -->
+      <div id="lb-podium-mobile"></div>
       <div style="border:1.5px solid var(--black);overflow:hidden">
         <table class="lb-tbl">
           <thead><tr><th>Hạng</th><th>Nhân viên</th><th>Bộ phận</th><th>★ Sao</th><th>Bài đăng</th></tr></thead>
@@ -1802,6 +1825,23 @@ async function loadLeaderboard() {
     <div class="pi p2">${p2?`<div class="pav" style="background:${strToColor(p2.full_name)};color:#FFF;border:1.5px solid rgba(0,0,0,.1)">${p2.avatar_text||'?'}</div><div class="pnm">${esc(p2.full_name)}</div><div class="pdpt">${esc(p2.department)}</div><div class="psc">${p2.stars_this_month}★</div><div class="prk">🥈 Hạng 2</div>`:'<div style="color:var(--text3)">—</div>'}</div>
     <div class="pi p1"><div style="font-size:18px;margin-bottom:4px;color:var(--gold)">★</div><div class="pav" style="background:${strToColor(p1.full_name)};color:#FFF;border:2px solid var(--gold)">${p1.avatar_text||'?'}</div><div class="pnm">${esc(p1.full_name)}</div><div class="pdpt">${esc(p1.department)}</div><div class="psc">${p1.stars_this_month}★</div><div class="prk">◆ Hạng 1</div></div>
     <div class="pi p3">${p3?`<div class="pav" style="background:${strToColor(p3.full_name)};color:#FFF;border:1.5px solid rgba(0,0,0,.1)">${p3.avatar_text||'?'}</div><div class="pnm">${esc(p3.full_name)}</div><div class="pdpt">${esc(p3.department)}</div><div class="psc">${p3.stars_this_month}★</div><div class="prk">🥉 Hạng 3</div>`:'<div style="color:var(--text3)">—</div>'}</div>`;
+
+  // Mobile podium cards
+  const mobileP = document.getElementById('lb-podium-mobile');
+  if (mobileP) {
+    const cards = [
+      { p: p1, rank: 1, medal: '◆', cls: 'pm-1' },
+      { p: p2, rank: 2, medal: '🥈', cls: 'pm-2' },
+      { p: p3, rank: 3, medal: '🥉', cls: 'pm-3' },
+    ];
+    mobileP.innerHTML = cards.map(({p, rank, medal, cls}) => p ? `
+      <div class="pm-card ${cls}">
+        <div class="pm-rank">${medal} Hạng ${rank}</div>
+        <div class="pm-avatar" style="background:${strToColor(p.full_name)};color:#FFF">${p.avatar_text||'?'}</div>
+        <div class="pm-name">${esc(p.full_name)}</div>
+        <div class="pm-stars">${p.stars_this_month}★</div>
+      </div>` : '').join('');
+  }
 
   // Table
   document.getElementById('lb-body').innerHTML = data.map((p,i) => `
