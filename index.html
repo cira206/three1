@@ -532,7 +532,9 @@ textarea.inf { resize:none; min-height:74px; }
     width:100%;
     gap:0;
     padding:0;
+    overflow-x:auto;
     scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
   }
   .nav::-webkit-scrollbar { display:none; }
   .ng { display:none !important; }
@@ -541,8 +543,9 @@ textarea.inf { resize:none; min-height:74px; }
     align-items:center;
     justify-content:center;
     flex:1;
-    min-width:44px;
-    padding:6px 2px 8px;
+    min-width:0;
+    max-width:80px;
+    padding:6px 6px 8px;
     border-left:none !important;
     border-top:2.5px solid transparent;
     border-radius:0;
@@ -550,6 +553,7 @@ textarea.inf { resize:none; min-height:74px; }
     gap:3px;
     color:rgba(255,255,255,0.45);
     transition: all .15s;
+    overflow:hidden;
   }
   .ni.active {
     background:#111 !important;
@@ -557,8 +561,19 @@ textarea.inf { resize:none; min-height:74px; }
     border-top:2.5px solid var(--gold) !important;
   }
   .ni:hover { color:rgba(255,255,255,0.8); }
-  .ni-icon { font-size:18px !important; line-height:1; }
-  .ni-short { font-size:8.5px !important; font-weight:700 !important; letter-spacing:.04em; color:inherit; text-transform:uppercase; }
+  .ni-icon { font-size:18px !important; line-height:1; flex-shrink:0; }
+  .ni-short { 
+    font-size:8px !important; 
+    font-weight:700 !important; 
+    letter-spacing:.02em; 
+    color:inherit; 
+    text-transform:uppercase;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    max-width:100%;
+    text-align:center;
+  }
   .ni-full { display:none !important; }
   .sidebar-user { display:none !important; }
   .main-area { margin-left:0; padding-bottom:72px; }
@@ -714,7 +729,7 @@ textarea.inf { resize:none; min-height:74px; }
     </div>
     <div class="nav">
       <div class="ng">Main</div>
-      <div class="ni active" onclick="go('feed')"><span class="ni-icon">🏠</span><span class="ni-full">◈ &nbsp;Trang chủ</span><span class="ni-short">Trang chủ</span></div>
+      <div class="ni active" onclick="go('feed')"><span class="ni-icon">🏠</span><span class="ni-full">◈ &nbsp;Trang chủ</span><span class="ni-short">Home</span></div>
       <div class="ni" onclick="go('leaderboard')"><span class="ni-icon">🏆</span><span class="ni-full">◆ &nbsp;Bảng xếp hạng</span><span class="ni-short">BXH</span></div>
       <div class="ni" onclick="go('wall')"><span class="ni-icon">🖼</span><span class="ni-full">◉ &nbsp;Culture Wall</span><span class="ni-short">Culture</span></div>
       <div class="ni" onclick="go('challenges')"><span class="ni-icon">🎯</span><span class="ni-full">◎ &nbsp;Thử thách</span><span class="ni-short">Thử thách</span></div>
