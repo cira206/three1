@@ -1,0 +1,3498 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THREE O'CLOCK — StarWork</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --black:#0A0A0A; --white:#FFFFFF; --gold:#A8842C; --gold-light:#C9A84C;
+  --gold-pale:#F5EDD8; --red:#8B1A1A; --red-light:#C42B2B;
+  --grey:#9B9B9B; --grey-dark:#4A4A4A;
+  --border:#1A1A1A; --border-soft:#D8D0C4;
+  --text:#0A0A0A; --text2:#5A5550; --text3:#9A9490;
+  --bg:#FFFFFF; --bg2:#F7F5F2; --F:'Manrope',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--F);background:var(--bg);color:var(--text);min-height:100vh;}
+::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-track{background:#f0f0f0;} ::-webkit-scrollbar-thumb{background:#ccc;}
+
+/* ── AUTH SCREEN ── */
+#auth-screen {
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:var(--bg2);
+}
+.auth-box {
+  background:#FFF; border:2px solid var(--black); padding:40px;
+  width:420px; max-width:92vw;
+}
+.auth-logo { display:flex; align-items:center; gap:14px; margin-bottom:32px; }
+.auth-brand { font-size:14px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; line-height:1.3; }
+.auth-title { font-size:20px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; margin-bottom:6px; }
+.auth-sub { font-size:12px; color:var(--text3); margin-bottom:24px; }
+.field { margin-bottom:14px; }
+.field label { display:block; font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--text3); margin-bottom:5px; }
+.inp {
+  width:100%; background:var(--bg2); border:1.5px solid var(--border-soft);
+  padding:10px 13px; font-family:var(--F); font-size:13px; color:var(--text);
+  outline:none; transition:.12s; border-radius:0;
+}
+.inp:focus { border-color:var(--black); background:#FFF; }
+.inp::placeholder { color:var(--text3); }
+.auth-err { color:var(--red); font-size:12px; margin-bottom:12px; display:none; padding:8px 12px; background:rgba(139,26,26,.06); border-left:3px solid var(--red); }
+.auth-switch { font-size:12px; color:var(--text3); margin-top:14px; text-align:center; }
+.auth-switch a { color:var(--gold); font-weight:700; cursor:pointer; text-decoration:none; }
+.auth-tabs { display:flex; border-bottom:1.5px solid var(--black); margin-bottom:22px; }
+.auth-tab { flex:1; padding:9px; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; text-align:center; cursor:pointer; color:var(--text3); border-bottom:2px solid transparent; margin-bottom:-1.5px; transition:.12s; }
+.auth-tab.active { color:var(--black); border-bottom-color:var(--black); }
+
+/* ── APP LAYOUT ── */
+#app { display:none; height:100vh; flex-direction:row; }
+#app.visible { display:flex; }
+
+.sidebar {
+  width:225px; background:#FFF; border-right:2px solid var(--black);
+  display:flex; flex-direction:column; flex-shrink:0;
+}
+.logo-area { padding:18px 16px 14px; border-bottom:1.5px solid var(--black); display:flex; align-items:center; gap:11px; }
+.brand-logo { width:44px; height:44px; flex-shrink:0; }
+.brand-name { font-weight:800; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--black); line-height:1.3; }
+
+.nav { padding:12px 10px; flex:1; overflow-y:auto; }
+.ng { font-size:9px; font-weight:800; letter-spacing:.2em; text-transform:uppercase; color:var(--text3); padding:10px 10px 4px; }
+.ni { display:flex; align-items:center; gap:9px; padding:9px 10px; cursor:pointer; font-size:13px; font-weight:500; color:var(--text2); transition:.12s; margin-bottom:1px; border-left:2px solid transparent; }
+.ni:hover { color:var(--black); background:var(--bg2); }
+.ni.active { background:var(--black); color:#FFF; font-weight:800; }
+.nbadge { margin-left:auto; background:var(--red); color:#FFF; font-size:9px; font-weight:800; padding:2px 6px; }
+
+.sidebar-user { padding:13px 14px; border-top:1.5px solid var(--black); display:flex; align-items:center; gap:9px; }
+.uav { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#FFF; flex-shrink:0; }
+.uname-s { font-size:12px; font-weight:800; }
+.urole-s { font-size:10px; color:var(--text3); }
+.upts-s { margin-left:auto; font-size:12px; font-weight:800; color:var(--gold); }
+
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.topbar { height:56px; border-bottom:1.5px solid var(--black); display:flex; align-items:center; padding:0 24px; gap:10px; flex-shrink:0; background:#FFF; position:relative; }
+.topbar-title { font-size:13px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+.tr { margin-left:auto; display:flex; gap:8px; align-items:center; }
+.live-pill { display:flex; align-items:center; gap:5px; border:1.5px solid var(--border-soft); padding:4px 10px; font-size:11px; color:var(--text3); }
+.ldot { width:6px; height:6px; border-radius:50%; background:#2D8F5A; animation:blink 1.6s infinite; }
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── BUTTONS ── */
+.btn { display:inline-flex; align-items:center; gap:5px; padding:8px 16px; font-size:11px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; cursor:pointer; border:none; transition:.12s; font-family:var(--F); border-radius:0; }
+.btn-black { background:var(--black); color:#FFF; border:2px solid var(--black); }
+.btn-black:hover { background:#333; }
+.btn-outline { background:#FFF; border:2px solid var(--black); color:var(--black); }
+.btn-outline:hover { background:var(--black); color:#FFF; }
+.btn-gold { background:var(--gold); color:#FFF; border:2px solid var(--gold); }
+.btn-red { background:var(--red); color:#FFF; border:2px solid var(--red); }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+
+/* ── PAGES ── */
+.page { display:none; flex:1; overflow-y:auto; padding:24px 26px; }
+.page.active { display:block; }
+
+.sh { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:20px; padding-bottom:10px; border-bottom:2px solid var(--black); }
+.sh-t { font-size:18px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.sh-s { font-size:11px; color:var(--text3); margin-top:2px; }
+
+.card { background:#FFF; border:1.5px solid var(--black); padding:18px; }
+.ct { font-size:10px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--text3); margin-bottom:13px; padding-bottom:9px; border-bottom:1px solid var(--border-soft); }
+
+/* ── STATS ── */
+.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:0; border:1.5px solid var(--black); margin-bottom:22px; }
+.sb { background:#FFF; padding:18px 20px; position:relative; border-right:1.5px solid var(--black); }
+.sb:last-child { border-right:none; }
+.sb.hl { background:var(--gold-pale); border-left:3px solid var(--gold); }
+.sbl { font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--text3); margin-bottom:7px; }
+.sbv { font-size:32px; font-weight:800; letter-spacing:-.02em; line-height:1; color:var(--black); }
+.sb.hl .sbv { color:var(--gold); }
+.sbn { font-size:11px; color:var(--text3); margin-top:5px; }
+.sbi { position:absolute; top:14px; right:16px; font-size:22px; opacity:.07; }
+
+/* ── TICKER ── */
+.ticker { overflow:hidden; background:#FFF; border-top:1.5px solid var(--black); border-bottom:1.5px solid var(--black); padding:6px 0; margin-bottom:18px; white-space:nowrap; }
+.ti { display:inline-block; animation:tk 50s linear infinite; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--text2); }
+.ti b { color:var(--gold); }
+@keyframes tk{from{transform:translateX(100vw)}to{transform:translateX(-100%)}}
+
+/* ── FEED ── */
+.feed-layout { display:grid; grid-template-columns:1fr 290px; gap:18px; }
+.feed { display:flex; flex-direction:column; gap:10px; }
+
+/* ── QUOTA ── */
+.quota-card { background:#FFF; border:1.5px solid var(--black); padding:16px; margin-bottom:13px; }
+.ql { font-size:9px; font-weight:800; letter-spacing:.18em; text-transform:uppercase; color:var(--text3); margin-bottom:10px; }
+.qrow { display:flex; gap:5px; }
+.qs { width:30px; height:30px; background:var(--gold); display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; color:#FFF; }
+.qs.used { background:var(--bg2); border:1.5px solid var(--border-soft); }
+.qs.used span { opacity:.25; filter:grayscale(1); }
+.qreset { font-size:10px; color:var(--text3); margin-top:9px; }
+
+/* ── POST CARD ── */
+.pc { background:#FFF; border:1.5px solid var(--border-soft); border-left:3px solid var(--black); padding:16px 18px; transition:.15s; animation:fu .3s ease both; }
+@keyframes fu{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.pc:hover { border-color:var(--black); border-left-color:var(--gold); }
+.ph { display:flex; align-items:flex-start; gap:11px; margin-bottom:11px; }
+.av { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex-shrink:0; border:1.5px solid rgba(0,0,0,.1); }
+.pm { flex:1; }
+.pn { font-size:13px; line-height:1.4; }
+.pn strong { font-weight:800; }
+.arr { color:var(--gold); margin:0 4px; font-weight:700; }
+.pt { font-size:11px; color:var(--text3); margin-top:2px; }
+.vtag { font-size:10px; font-weight:800; letter-spacing:.09em; text-transform:uppercase; padding:3px 8px; flex-shrink:0; border:1.5px solid; }
+.vt-cf{color:var(--red);border-color:rgba(139,26,26,.3);background:rgba(139,26,26,.05);}
+.vt-tw{color:var(--gold);border-color:rgba(168,132,44,.35);background:rgba(168,132,44,.06);}
+.vt-in{color:var(--black);border-color:rgba(0,0,0,.2);background:rgba(0,0,0,.04);}
+.vt-ow{color:var(--grey-dark);border-color:rgba(74,74,74,.25);background:rgba(74,74,74,.04);}
+.vt-it{color:var(--grey-dark);border-color:rgba(74,74,74,.25);background:rgba(74,74,74,.04);}
+.pb { font-size:13px; line-height:1.65; margin-bottom:11px; }
+.sa { display:inline-flex; align-items:center; gap:5px; border:1.5px solid rgba(168,132,44,.4); background:var(--gold-pale); padding:4px 11px; margin-bottom:11px; font-size:11px; font-weight:800; color:var(--gold); letter-spacing:.06em; text-transform:uppercase; }
+.pacts { display:flex; gap:5px; }
+.ab { background:#FFF; border:1.5px solid var(--border-soft); padding:5px 11px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text2); cursor:pointer; transition:.12s; font-family:var(--F); }
+.ab:hover { border-color:var(--black); color:var(--black); }
+.ab.liked { border-color:var(--gold); color:var(--gold); background:var(--gold-pale); }
+
+/* ── RANK LIST ── */
+.rank-list { display:flex; flex-direction:column; gap:4px; }
+.rr { display:flex; align-items:center; gap:9px; padding:9px 11px; background:var(--bg2); border:1.5px solid var(--border-soft); cursor:pointer; transition:.12s; }
+.rr:hover { border-color:var(--black); }
+.rr.r1 { background:var(--gold-pale); border-color:var(--gold); border-left:3px solid var(--gold); }
+.rpos { font-size:11px; font-weight:800; width:20px; text-align:center; }
+.rr.r1 .rpos { color:var(--gold); }
+.rname { flex:1; font-size:12px; font-weight:700; }
+.rdept { font-size:10px; color:var(--text3); }
+.rscore { font-size:12px; font-weight:800; color:var(--gold); }
+
+/* ── CHALLENGE ── */
+.cc { border:1.5px solid var(--black); padding:15px; position:relative; background:#FFF; overflow:hidden; }
+.cc::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--gold); }
+.cweek { font-size:9px; font-weight:800; letter-spacing:.15em; text-transform:uppercase; color:var(--gold); margin-bottom:4px; }
+.cname { font-size:14px; font-weight:800; margin-bottom:4px; }
+.cdesc { font-size:12px; color:var(--text2); margin-bottom:10px; line-height:1.5; }
+.pb-bar { background:var(--bg2); height:4px; border:1px solid var(--border-soft); overflow:hidden; }
+.pb-fill { height:100%; background:var(--gold); }
+.pb-lbl { font-size:10px; color:var(--text3); font-weight:600; margin-top:4px; }
+.crew { margin-top:9px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+.crew span { color:var(--gold); }
+
+/* ── COMPOSE ── */
+.compose-box { background:#FFF; border:2px solid var(--black); padding:18px; margin-bottom:16px; display:none; }
+.compose-box.open { display:block; }
+.ctitle { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; margin-bottom:12px; }
+.inf { width:100%; background:var(--bg2); border:1.5px solid var(--border-soft); padding:9px 12px; color:var(--text); font-family:var(--F); font-size:13px; outline:none; transition:.12s; margin-bottom:9px; border-radius:0; }
+.inf:focus { border-color:var(--black); background:#FFF; }
+.inf::placeholder { color:var(--text3); }
+textarea.inf { resize:none; min-height:74px; }
+.vrow { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:11px; }
+.vc { padding:5px 11px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; border:1.5px solid var(--border-soft); color:var(--text2); background:#FFF; transition:.12s; }
+.vc:hover,.vc.sel { border-color:var(--black); color:var(--black); background:var(--bg2); }
+.srow { display:flex; gap:5px; margin-bottom:12px; align-items:center; }
+.srow label { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--text3); flex-shrink:0; }
+.so { padding:7px 12px; border:1.5px solid var(--border-soft); background:#FFF; color:var(--text2); cursor:pointer; font-size:12px; font-weight:700; transition:.12s; }
+.so:hover,.so.sel { border-color:var(--gold); color:var(--gold); background:var(--gold-pale); }
+
+/* ── LEADERBOARD ── */
+.lbpodium { display:flex; background:var(--bg2); border:1.5px solid var(--black); margin-bottom:20px; }
+.pi { display:flex; flex-direction:column; align-items:center; padding:22px 28px; flex:1; }
+.pi.p1 { background:var(--gold-pale); border-left:1px solid rgba(168,132,44,.35); border-right:1px solid rgba(168,132,44,.35); }
+.pav { width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:800; margin-bottom:9px; border:1.5px solid rgba(0,0,0,.12); }
+.pi.p1 .pav { width:60px; height:60px; font-size:21px; border:2px solid var(--gold); }
+.pnm { font-size:12px; font-weight:800; color:var(--black); letter-spacing:.04em; margin-bottom:2px; }
+.pdpt { font-size:9px; color:var(--text3); letter-spacing:.1em; text-transform:uppercase; margin-bottom:7px; }
+.psc { font-size:22px; font-weight:800; color:var(--grey-dark); }
+.pi.p1 .psc { color:var(--gold); font-size:26px; }
+.prk { font-size:10px; color:var(--text3); font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+.pi.p1 .prk { color:var(--gold); }
+.lb-tbl { width:100%; border-collapse:collapse; }
+.lb-tbl th { text-align:left; padding:9px 13px; font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--text3); background:var(--bg2); border-bottom:1.5px solid var(--black); }
+.lb-tbl td { padding:12px 13px; border-bottom:1px solid var(--border-soft); font-size:13px; }
+.lb-tbl tr:hover td { background:var(--gold-pale); }
+
+/* ── PROFILE ── */
+.prof-banner { background:var(--bg2); border:1.5px solid var(--black); padding:26px 28px; margin-bottom:16px; display:flex; gap:22px; align-items:center; }
+.profav { width:66px; height:66px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800; color:#FFF; flex-shrink:0; border:2px solid var(--gold); }
+.pnm2 { font-size:20px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:var(--black); }
+.pdpt2 { font-size:11px; color:var(--text2); letter-spacing:.1em; text-transform:uppercase; margin:3px 0 10px; }
+.brow { display:flex; gap:5px; flex-wrap:wrap; }
+.bb { padding:3px 9px; font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.bb-g{background:var(--gold);color:#FFF;} .bb-r{background:var(--red);color:#FFF;} .bb-gr{background:var(--grey);color:#FFF;}
+.profnums { margin-left:auto; display:grid; grid-template-columns:repeat(3,1fr); gap:20px; text-align:center; }
+.pnv { font-size:28px; font-weight:800; color:var(--gold); }
+.pnl { font-size:10px; color:var(--text3); letter-spacing:.1em; text-transform:uppercase; margin-top:2px; }
+
+/* ── ADMIN ── */
+.warn { background:rgba(139,26,26,.04); border:1.5px solid rgba(139,26,26,.2); border-left:3px solid var(--red); padding:13px 15px; display:flex; gap:11px; margin-bottom:9px; }
+.wi { font-size:17px; flex-shrink:0; }
+.wb { font-size:12px; line-height:1.6; }
+.wb strong { font-weight:800; text-transform:uppercase; letter-spacing:.04em; display:block; margin-bottom:2px; font-size:11px; color:var(--red); }
+.wa { display:flex; gap:5px; margin-top:7px; }
+.ht { width:100%; border-collapse:collapse; }
+.ht th { text-align:left; padding:8px 13px; font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--text3); background:var(--bg2); border-bottom:1.5px solid var(--black); }
+.ht td { padding:10px 13px; border-bottom:1px solid var(--border-soft); font-size:12px; }
+.ht tr:hover td { background:var(--gold-pale); }
+.sok{color:#2D8F5A;font-weight:800;font-size:10px;letter-spacing:.06em;text-transform:uppercase;}
+.swn{color:var(--red);font-weight:800;font-size:10px;letter-spacing:.06em;text-transform:uppercase;}
+
+/* ── TABS ── */
+.tabs { display:flex; border-bottom:1.5px solid var(--black); margin-bottom:18px; }
+.tab { padding:8px 16px; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; color:var(--text3); border-bottom:2px solid transparent; margin-bottom:-1.5px; transition:.12s; }
+.stab { font-family:var(--F); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; padding:9px 20px; border:none; border-bottom:2px solid transparent; background:transparent; cursor:pointer; color:var(--text2); transition:.12s; }
+.stab:hover { color:var(--black); }
+.stab.active { color:var(--black); border-bottom:2.5px solid var(--black); }
+.tab:hover { color:var(--black); }
+.tab.active { color:var(--black); border-bottom-color:var(--black); }
+
+/* ── MODAL ── */
+.modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:100; align-items:center; justify-content:center; }
+.modal-bg.open { display:flex; }
+.modal-box { background:#FFF; border:2px solid var(--black); padding:26px; width:450px; max-width:90vw; animation:mi .2s ease; }
+@keyframes mi{from{opacity:0;transform:scale(.97) translateY(-7px)}to{opacity:1;transform:none}}
+.mt2 { font-size:15px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; margin-bottom:3px; }
+.ms2 { font-size:12px; color:var(--text3); margin-bottom:18px; }
+.mf { display:flex; gap:7px; justify-content:flex-end; margin-top:16px; }
+
+/* ── NOTIFICATION ── */
+.notif-item { padding:12px 14px; border-bottom:1px solid var(--border-soft); cursor:pointer; transition:.12s; display:flex; gap:10px; align-items:flex-start; }
+.notif-item:hover { background:var(--bg2); }
+.notif-item.unread { background:rgba(168,132,44,.06); border-left:3px solid var(--gold); }
+.notif-icon { font-size:18px; flex-shrink:0; margin-top:1px; }
+.notif-body { flex:1; }
+.notif-title { font-size:12px; font-weight:700; margin-bottom:2px; }
+.notif-sub { font-size:11px; color:var(--text3); line-height:1.5; }
+.notif-time { font-size:10px; color:var(--text3); margin-top:3px; }
+
+/* ── TOAST ── */
+.toast { display:none; position:fixed; bottom:22px; right:22px; background:var(--black); color:#FFF; border-left:4px solid var(--gold); padding:13px 18px; font-size:13px; font-weight:600; align-items:center; gap:7px; z-index:200; max-width:310px; }
+
+/* ── LOADING ── */
+.loading { display:flex; align-items:center; justify-content:center; height:200px; flex-direction:column; gap:12px; }
+.spinner { width:32px; height:32px; border:3px solid var(--border-soft); border-top-color:var(--gold); border-radius:50%; animation:spin .8s linear infinite; }
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-state { text-align:center; padding:40px 20px; color:var(--text3); }
+.empty-icon { font-size:36px; margin-bottom:12px; }
+.empty-txt { font-size:13px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE — MOBILE (≤768px)
+   ══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ── AUTH SCREEN ── */
+  .auth-box { width:100%; max-width:100%; padding:28px 20px; border-left:none; border-right:none; border-radius:0; min-height:100vh; }
+  #auth-screen { align-items:flex-start; }
+  .auth-logo { margin-bottom:24px; }
+
+  /* ── APP LAYOUT ── */
+  #app { flex-direction:column; height:100vh; overflow:hidden; }
+
+  /* ── SIDEBAR → BOTTOM NAV ── */
+  .sidebar {
+    width:100% !important;
+    height:auto;
+    border-right:none;
+    border-top:2px solid var(--black);
+    flex-direction:row;
+    order:2;
+    flex-shrink:0;
+    overflow-x:auto;
+    overflow-y:hidden;
+  }
+  .logo-area { display:none; }
+  .sidebar-user { display:none; }
+  .nav {
+    display:flex;
+    flex-direction:row;
+    padding:0;
+    flex:1;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .nav::-webkit-scrollbar { display:none; }
+  .ng { display:none !important; } /* hide section labels */
+  .ni {
+    flex-direction:column;
+    gap:2px;
+    padding:8px 12px;
+    font-size:9px;
+    letter-spacing:.05em;
+    white-space:nowrap;
+    min-width:60px;
+    justify-content:center;
+    align-items:center;
+    border-bottom:none;
+    border-right:none;
+  }
+  .ni.active { background:var(--black); color:#FFF; }
+  .ni svg, .ni .ni-icon { display:none; }
+
+  /* ── MAIN CONTENT ── */
+  .main { order:1; flex:1; overflow:hidden; display:flex; flex-direction:column; }
+  .topbar { height:48px; padding:0 14px; flex-shrink:0; }
+  .topbar .tr { gap:5px; }
+  .live-pill { display:none; }
+  .page { padding:14px 14px 80px; }
+
+  /* ── TOPBAR MOBILE ── */
+  .mobile-user-info { display:flex; align-items:center; gap:8px; }
+
+  /* ── PAGE HEADER ── */
+  .sh { flex-direction:column; align-items:flex-start; gap:10px; margin-bottom:14px; }
+  .sh > * { width:100%; }
+
+  /* ── STATS ROW ── */
+  .stats-row { grid-template-columns:repeat(2,1fr); }
+
+  /* ── FEED LAYOUT ── */
+  .feed-layout { grid-template-columns:1fr; gap:12px; }
+  .feed-layout > div:last-child { display:none; } /* hide mini leaderboard sidebar */
+
+  /* ── POST CARD ── */
+  .card { padding:14px; }
+  .ph { gap:9px; }
+  .qrow { flex-wrap:wrap; }
+  .qs { width:36px; height:36px; font-size:16px; }
+
+  /* ── LEADERBOARD ── */
+  .lbpodium { flex-direction:column; }
+  .pi { padding:14px; flex-direction:row; gap:12px; justify-content:flex-start; }
+  .pav { width:40px; height:40px; font-size:15px; }
+
+  /* ── PROFILE ── */
+  .prof-banner { flex-direction:column; gap:14px; }
+  .profnums { margin-left:0; grid-template-columns:repeat(3,1fr); gap:10px; width:100%; }
+
+  /* ── STORE ── */
+  .stab { padding:8px 10px; font-size:9px; letter-spacing:.05em; }
+  .store-grid, [style*="grid-template-columns: repeat(3"] { grid-template-columns:repeat(2,1fr) !important; }
+
+  /* ── ADMIN TABLE ── */
+  table { font-size:11px; }
+  table th, table td { padding:6px 8px; }
+  .btn-red { padding:3px 6px; font-size:9px; }
+
+  /* ── MODAL ── */
+  .modal-box { width:94% !important; max-width:94% !important; padding:20px 16px; margin:0 auto; }
+
+  /* ── CHALLENGES ── */
+  [style*="grid-template-columns: repeat(2"] { grid-template-columns:1fr !important; }
+  [style*="grid-template-columns: repeat(3"] { grid-template-columns:1fr !important; }
+
+  /* ── BUTTONS ── */
+  .btn { padding:8px 14px; font-size:10px; }
+  .mf { flex-direction:column; }
+  .mf .btn { width:100%; justify-content:center; }
+
+  /* ── CULTURE WALL ── */
+  .vrow { gap:4px; }
+  .vtag { font-size:9px; padding:2px 7px; }
+
+  /* ── NOTIFICATIONS PANEL ── */
+  #notif-panel { width:100% !important; right:0 !important; left:0 !important; top:48px !important; }
+
+  /* ── FORM INPUTS ── */
+  input, select, textarea { font-size:16px !important; } /* prevent zoom on iOS */
+
+  /* ── GIVE STARS FORM ── */
+  .srow { flex-wrap:wrap; }
+}
+
+/* ── TABLET (769px – 1024px) ── */
+@media (min-width:769px) and (max-width:1024px) {
+  .sidebar { width:180px; }
+  .feed-layout { grid-template-columns:1fr 220px; }
+  .stats-row { grid-template-columns:repeat(2,1fr); }
+  .page { padding:18px 20px; }
+  .store-grid { grid-template-columns:repeat(2,1fr) !important; }
+}
+
+
+/* ── NAV ITEM DESKTOP/MOBILE TEXT ── */
+.ni-icon { display:none; font-size:18px; }
+.ni-short { display:none; font-size:9px; font-weight:700; letter-spacing:.03em; margin-top:2px; }
+.ni-full { display:inline; }
+@media (max-width:768px) {
+  .ni-icon { display:block; }
+  .ni-short { display:block; }
+  .ni-full { display:none; }
+  .ni { min-width:52px; padding:6px 8px 8px; }
+}
+
+@media (max-width:768px) {
+  .mobile-user-chip { display:flex !important; }
+  .topbar-title { font-size:13px; }
+  /* Tặng sao button - smaller on mobile */
+  .topbar .btn { padding:6px 10px; font-size:10px; }
+}
+
+.desktop-only { display:inline-flex; }
+.mobile-only  { display:none; }
+@media (max-width:768px) {
+  .desktop-only { display:none !important; }
+  .mobile-only  { display:inline-flex !important; }
+}
+
+/* ── MOBILE TOPBAR FIX ── */
+@media (max-width:768px) {
+  /* Topbar gọn hơn */
+  .topbar { padding:0 10px; gap:6px; justify-content:space-between; }
+  .topbar-title { font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+
+  /* Ẩn live pill trên mobile */
+  .live-pill { display:none !important; }
+
+  /* Bottom nav cải thiện */
+  .sidebar {
+    position:fixed !important;
+    bottom:0; left:0; right:0;
+    z-index:50;
+    background:#FFF;
+    height:56px !important;
+    padding:0 !important;
+    box-shadow:0 -2px 0 var(--black);
+  }
+  .nav {
+    height:100%;
+    padding:0 !important;
+    align-items:stretch;
+    justify-content:space-around;
+  }
+  .ni {
+    flex:1;
+    min-width:0 !important;
+    padding:5px 4px 6px !important;
+    border-bottom:none !important;
+    border-right:none !important;
+    font-size:8px !important;
+    letter-spacing:0 !important;
+    max-width:80px;
+  }
+  .ni.active {
+    background:var(--black) !important;
+    color:#FFF !important;
+  }
+  .ni-icon { font-size:17px !important; line-height:1; }
+  .ni-short { font-size:8px !important; margin-top:1px; }
+
+  /* Main content đẩy lên tránh bottom nav */
+  .main { height:calc(100vh - 56px); overflow:hidden; }
+  .page { padding-bottom:72px !important; }
+
+  /* App layout */
+  #app { flex-direction:column; height:100vh; }
+  .sidebar { order:2; }
+  .main { order:1; flex:1; }
+}
+
+
+@media (max-width:768px) {
+  .ni-short { font-size:10px !important; font-weight:800 !important; }
+  .ni-icon   { font-size:20px !important; }
+  .ni { min-width:56px; max-width:90px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH SCREEN ══ -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo" id="auth-logo-area">
+      <svg id="auth-logo-svg" width="44" height="44" viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="23" fill="#0A0A0A"/>
+        <circle cx="24" cy="24" r="20" stroke="white" stroke-width="1.2" stroke-dasharray="3.5 2.8" fill="none"/>
+        <ellipse cx="23.5" cy="27" rx="9.5" ry="7" fill="white"/>
+        <path d="M33 25.5 Q37.5 23 37 28" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+        <path d="M14 24.5 Q10.5 24.5 10.5 27.5 Q10.5 30.5 14 30" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+        <rect x="19" y="19.5" width="9" height="3" rx="1.5" fill="white"/>
+        <circle cx="23.5" cy="19.5" r="2" fill="white"/>
+        <circle cx="23.5" cy="27" r="4.5" fill="#0A0A0A"/>
+        <circle cx="23.5" cy="27" r="4.5" stroke="white" stroke-width="0.6" fill="none"/>
+        <line x1="23.5" y1="27" x2="27" y2="27" stroke="white" stroke-width="1.1" stroke-linecap="round"/>
+        <line x1="23.5" y1="27" x2="23.5" y2="23.5" stroke="white" stroke-width="1.1" stroke-linecap="round"/>
+        <circle cx="23.5" cy="27" r="0.7" fill="white"/>
+      </svg>
+      <div class="auth-brand" style="font-size:15px;white-space:nowrap">THREE O'CLOCK</div>
+    </div>
+
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchTab('login')">Đăng nhập</div>
+      <div class="auth-tab" onclick="switchTab('register')">Đăng ký</div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="login-form">
+      <div class="auth-title">Welcome Back</div>
+      <div class="auth-sub">Đăng nhập để ghi nhận đồng đội</div>
+      <div id="login-err" class="auth-err"></div>
+      <div class="field"><label>Email</label><input class="inp" id="login-email" type="email" placeholder="ten@congty.com"></div>
+      <div class="field"><label>Mật khẩu</label><input class="inp" id="login-pass" type="password" placeholder="••••••••"></div>
+      <button class="btn btn-black" style="width:100%;justify-content:center;margin-top:6px" onclick="doLogin()" id="btn-login">Đăng nhập →</button>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="register-form" style="display:none">
+      <div class="auth-title">Tạo tài khoản</div>
+      <div class="auth-sub">Điền thông tin để bắt đầu</div>
+      <div id="reg-err" class="auth-err"></div>
+      <div class="field"><label>Họ và tên</label><input class="inp" id="reg-name" type="text" placeholder="Nguyễn Văn A"></div>
+      <div class="field"><label>Email công ty</label><input class="inp" id="reg-email" type="email" placeholder="ten@congty.com"></div>
+      <div class="field"><label>Khối</label>
+        <select class="inp" id="reg-khoi" onchange="onKhoiChange(this)">
+          <option value="">-- Chọn khối --</option>
+          <option value="KHỐI VĂN PHÒNG">KHỐI VĂN PHÒNG</option>
+          <option value="KHỐI CỬA HÀNG">KHỐI CỬA HÀNG</option>
+        </select>
+      </div>
+      <div class="field" id="dept-field" style="display:none">
+        <label id="dept-label">Phòng ban</label>
+        <select class="inp" id="reg-dept">
+          <option value="">-- Chọn phòng ban --</option>
+        </select>
+      </div>
+      <div class="field"><label>Mật khẩu</label><input class="inp" id="reg-pass" type="password" placeholder="Tối thiểu 6 ký tự"></div>
+      <button class="btn btn-black" style="width:100%;justify-content:center;margin-top:6px" onclick="doRegister()" id="btn-reg">Đăng ký →</button>
+    </div>
+
+    <!-- PENDING APPROVAL MESSAGE -->
+    <div id="pending-msg" style="display:none">
+      <div style="text-align:center;padding:10px 0">
+        <div style="font-size:32px;margin-bottom:14px">⏳</div>
+        <div style="font-size:15px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Chờ Admin duyệt</div>
+        <div style="font-size:12px;color:var(--text3);line-height:1.7">Tài khoản của bạn đã được tạo thành công.<br>Vui lòng chờ Admin duyệt trước khi đăng nhập.<br><br>Liên hệ quản lý để được duyệt nhanh hơn.</div>
+        <button class="btn btn-outline" style="margin-top:18px" onclick="location.reload()">← Quay lại đăng nhập</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="logo-area">
+      <svg class="brand-logo" viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="23" fill="#0A0A0A"/>
+        <circle cx="24" cy="24" r="20" stroke="white" stroke-width="1.2" stroke-dasharray="3.5 2.8" fill="none"/>
+        <ellipse cx="23.5" cy="27" rx="9.5" ry="7" fill="white"/>
+        <path d="M33 25.5 Q37.5 23 37 28" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+        <path d="M14 24.5 Q10.5 24.5 10.5 27.5 Q10.5 30.5 14 30" stroke="white" stroke-width="2.2" stroke-linecap="round" fill="none"/>
+        <rect x="19" y="19.5" width="9" height="3" rx="1.5" fill="white"/>
+        <circle cx="23.5" cy="19.5" r="2" fill="white"/>
+        <circle cx="23.5" cy="27" r="4.5" fill="#0A0A0A"/>
+        <circle cx="23.5" cy="27" r="4.5" stroke="white" stroke-width="0.6" fill="none"/>
+        <line x1="23.5" y1="27" x2="27" y2="27" stroke="white" stroke-width="1.1" stroke-linecap="round"/>
+        <line x1="23.5" y1="27" x2="23.5" y2="23.5" stroke="white" stroke-width="1.1" stroke-linecap="round"/>
+        <circle cx="23.5" cy="27" r="0.7" fill="white"/>
+      </svg>
+      <div class="brand-name" style="white-space:nowrap;font-size:11px">THREE O'CLOCK</div>
+    </div>
+    <div class="nav">
+      <div class="ng">Main</div>
+      <div class="ni active" onclick="go('feed')"><span class="ni-icon">🏠</span><span class="ni-full">◈ &nbsp;Trang chủ</span><span class="ni-short">Trang chủ</span></div>
+      <div class="ni" onclick="go('leaderboard')"><span class="ni-icon">🏆</span><span class="ni-full">◆ &nbsp;Bảng xếp hạng</span><span class="ni-short">BXH</span></div>
+      <div class="ni" onclick="go('wall')"><span class="ni-icon">🖼</span><span class="ni-full">◉ &nbsp;Culture Wall</span><span class="ni-short">Culture</span></div>
+      <div class="ni" onclick="go('challenges')"><span class="ni-icon">🎯</span><span class="ni-full">◎ &nbsp;Thử thách</span><span class="ni-short">Thử thách</span></div>
+      <div class="ni" onclick="go('store')"><span class="ni-icon">🎁</span><span class="ni-full">◇ &nbsp;Đổi quà</span><span class="ni-short">Đổi quà</span></div>
+      <div class="ng" style="margin-top:10px">Personal</div>
+      <div class="ni" onclick="go('profile')"><span class="ni-icon">👤</span><span class="ni-full">○ &nbsp;Hồ sơ của tôi</span><span class="ni-short">Hồ sơ</span></div>
+      <div class="ni" onclick="go('aireport')"><span class="ni-icon">🤖</span><span class="ni-full">◈ &nbsp;AI Báo cáo</span><span class="ni-short">AI</span></div>
+      <div class="ng" style="margin-top:10px;display:none" id="admin-nav-group">Admin</div>
+      <div class="ni" id="admin-nav-item" onclick="go('admin')" style="display:none"><span class="ni-icon">⚙️</span><span class="ni-full">▪ &nbsp;Admin Panel</span><span class="ni-short">Admin</span></div>
+    </div>
+    <div class="sidebar-user">
+      <div class="uav" id="sidebar-av">?</div>
+      <div>
+        <div class="uname-s" id="sidebar-name">...</div>
+        <div class="urole-s" id="sidebar-dept">...</div>
+      </div>
+      <div class="upts-s" id="sidebar-stars">0★</div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-title" id="page-title">Trang Chủ</div>
+      <div class="mobile-user-chip" onclick="go('profile')" style="display:none;align-items:center;gap:6px;cursor:pointer">
+        <div class="uav" id="topbar-av" style="width:26px;height:26px;font-size:10px">?</div>
+        <span id="topbar-stars" style="font-size:11px;font-weight:800;color:var(--gold)">0★</span>
+      </div>
+      <div class="live-pill"><div class="ldot"></div><span id="online-count">--</span> online</div>
+      <div class="tr">
+        <div id="notif-btn" onclick="toggleNotifPanel()" style="display:none;position:relative;cursor:pointer;padding:6px 10px;border:1.5px solid var(--black);background:#FFF;margin-right:4px">
+          <span style="font-size:14px">🔔</span>
+          <span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--red);color:#FFF;font-size:9px;font-weight:800;padding:2px 5px;min-width:16px;text-align:center">0</span>
+        </div>
+        <button class="btn btn-outline desktop-only" onclick="openGiveModal()">★ Tặng sao</button>
+        <button class="btn btn-black desktop-only" onclick="openCompose()">+ Đăng cảm ơn</button>
+        <button class="btn btn-outline desktop-only" onclick="doLogout()">Đăng xuất</button>
+        <button class="btn btn-outline mobile-only" onclick="openGiveModal()" style="padding:6px 10px;font-size:13px">★</button>
+        <button class="btn btn-black mobile-only" onclick="openCompose()" style="padding:6px 10px;font-size:11px">+</button>
+        <button class="btn btn-outline mobile-only" onclick="doLogout()" style="padding:6px 8px;font-size:10px">Out</button>
+      </div>
+      <!-- NOTIFICATION PANEL -->
+      <div id="notif-panel" style="display:none;position:absolute;top:57px;right:16px;width:340px;background:#FFF;border:2px solid var(--black);z-index:90;max-height:420px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.12)">
+        <div style="padding:12px 14px;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1.5px solid var(--black);display:flex;justify-content:space-between;align-items:center"><span>Thông báo</span><span onclick="clearNotifs()" style="cursor:pointer;color:var(--gold);font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:none">Xóa tất cả</span></div>
+        <div id="notif-list"><div style="padding:20px;text-align:center;font-size:12px;color:var(--text3)">Chưa có thông báo</div></div>
+      </div>
+    </header>
+
+    <!-- FEED -->
+    <div class="page active" id="page-feed">
+      <div class="ticker"><div class="ti" id="ticker-text">Đang tải tin tức...</div></div>
+      <div class="stats-row">
+        <div class="sb hl"><div class="sbl">Tổng sao của tôi</div><div class="sbv" id="stat-total">—</div><div class="sbn" id="stat-rank">Đang tải...</div><div class="sbi">★</div></div>
+        <div class="sb"><div class="sbl">Sao còn lại hôm nay</div><div class="sbv" style="color:var(--gold)" id="stat-quota">—</div><div class="sbn">/ 5 sao · reset 00:00</div><div class="sbi">★</div></div>
+        <div class="sb"><div class="sbl">Bài đăng của tôi</div><div class="sbv" id="stat-posts">—</div><div class="sbn">Tháng này</div><div class="sbi">◈</div></div>
+        <div class="sb"><div class="sbl">Lời cảm ơn nhận</div><div class="sbv" id="stat-received">—</div><div class="sbn">Tháng này</div><div class="sbi">◉</div></div>
+      </div>
+      <div class="feed-layout">
+        <div>
+          <!-- Compose -->
+          <div class="compose-box" id="ca">
+            <div class="ctitle">✦ Đăng Lời Cảm Ơn</div>
+            <select class="inf" id="compose-to"><option value="">Chọn người nhận...</option></select>
+            <textarea class="inf" id="compose-msg" placeholder="Viết lời cảm ơn..."></textarea>
+            <!-- IMAGE UPLOAD -->
+            <div style="margin-bottom:11px">
+              <input type="file" id="compose-img-input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewComposeImage(this)">
+              <div id="compose-img-preview" style="display:none;margin-bottom:8px;position:relative;display:none">
+                <img id="compose-img-thumb" style="max-height:120px;max-width:100%;border:1.5px solid var(--border-soft);display:block">
+                <button onclick="removeComposeImage()" style="position:absolute;top:4px;right:4px;background:var(--red);color:#FFF;border:none;width:22px;height:22px;cursor:pointer;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">✕</button>
+              </div>
+              <button class="btn btn-outline" style="padding:5px 11px;font-size:10px" onclick="document.getElementById('compose-img-input').click()">📎 Đính kèm ảnh</button>
+              <span style="font-size:10px;color:var(--text3);margin-left:8px">JPG/PNG/WEBP · tự động nén</span>
+            </div>
+            <div style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">Giá trị liên quan</div>
+            <div class="vrow">
+              <div class="vc sel" data-val="teamwork" onclick="selVal(this)">Teamwork</div>
+              <div class="vc" data-val="customer_first" onclick="selVal(this)">Customer First</div>
+              <div class="vc" data-val="innovation" onclick="selVal(this)">Innovation</div>
+              <div class="vc" data-val="ownership" onclick="selVal(this)">Ownership</div>
+              <div class="vc" data-val="integrity" onclick="selVal(this)">Integrity</div>
+            </div>
+            <div class="srow">
+              <label>Tặng sao:</label>
+              <div class="so sel" data-stars="1" onclick="selStar(this)">1★</div>
+              <div class="so" data-stars="2" onclick="selStar(this)">2★★</div>
+              <div class="so" data-stars="3" onclick="selStar(this)">3★★★</div>
+              <div class="so" data-stars="5" onclick="selStar(this)">5★★★★★</div>
+              <div style="flex:1"></div>
+              <button class="btn btn-black" onclick="submitPost()" id="btn-post">Đăng ngay →</button>
+            </div>
+          </div>
+          <!-- Feed list -->
+          <div class="feed" id="fl">
+            <div class="loading"><div class="spinner"></div><div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)">Đang tải...</div></div>
+          </div>
+        </div>
+        <!-- Right panel -->
+        <div>
+          <div class="quota-card">
+            <div class="ql">Quota sao hôm nay · Max 5★/ngày</div>
+            <div class="qrow" id="quota-row">
+              <div class="qs"><span>★</span></div>
+              <div class="qs"><span>★</span></div>
+              <div class="qs"><span>★</span></div>
+              <div class="qs"><span>★</span></div>
+              <div class="qs"><span>★</span></div>
+            </div>
+            <div class="qreset">Reset mỗi ngày lúc 00:00</div>
+          </div>
+          <div class="card" style="margin-bottom:13px">
+            <div class="ct">Top tuần này</div>
+            <div class="rank-list" id="mini-lb">
+              <div class="loading" style="height:100px"><div class="spinner"></div></div>
+            </div>
+          </div>
+          <div id="active-challenge-widget">
+            <!-- Loaded dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEADERBOARD -->
+    <div class="page" id="page-leaderboard">
+      <div class="sh"><div><div class="sh-t">Bảng Xếp Hạng</div><div class="sh-s" id="lb-period">Tháng này</div></div><button class="btn btn-black" onclick="loadLeaderboard()">Làm mới ↻</button></div>
+      <div class="tabs" id="branch-tabs" style="margin-bottom:18px;overflow-x:auto;flex-wrap:nowrap">
+        <div class="tab active" onclick="filterBranch(null,this)">Tất cả</div>
+      </div>
+      <div class="lbpodium" id="lb-podium">
+        <div class="loading" style="height:160px;flex:1"><div class="spinner"></div></div>
+      </div>
+      <div style="border:1.5px solid var(--black);overflow:hidden">
+        <table class="lb-tbl">
+          <thead><tr><th>Hạng</th><th>Nhân viên</th><th>Bộ phận</th><th>★ Sao</th><th>Bài đăng</th></tr></thead>
+          <tbody id="lb-body">
+            <tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CULTURE WALL -->
+    <div class="page" id="page-wall">
+      <div class="sh"><div><div class="sh-t">Culture Wall</div><div class="sh-s">Tất cả lời cảm ơn</div></div></div>
+      <div id="wall-grid" style="columns:3;column-gap:12px">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- CHALLENGES -->
+    <div class="page" id="page-challenges">
+      <div class="sh"><div><div class="sh-t">Thử Thách</div><div class="sh-s">Hoàn thành để nhận phần thưởng</div></div></div>
+      <div id="challenges-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+
+    <!-- ══ STORE - CỬA HÀNG ĐỔI QUÀ ══ -->
+    <div class="page" id="page-store">
+      <div class="sh">
+        <div>
+          <div class="sh-t">Cửa Hàng Đổi Quà</div>
+          <div class="sh-s">Dùng ★ để đổi phần thưởng thật</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="border:1.5px solid var(--black);padding:6px 16px;font-size:13px;line-height:1.4">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)">Điểm đổi quà</div>
+            <div style="font-size:18px;font-weight:900;color:var(--gold)" id="store-balance">0★</div>
+          </div>
+          <div style="border:1.5px solid var(--border-soft);padding:6px 16px;font-size:13px;line-height:1.4">
+            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3)">Điểm danh tiếng</div>
+            <div style="font-size:18px;font-weight:900" id="store-reputation">0★</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs lọc danh mục -->
+      <div style="display:flex;gap:0;border-bottom:1.5px solid var(--black);margin-bottom:20px">
+        <button id="stab-all"     class="stab active" onclick="filterStore('all')">TẤT CẢ</button>
+        <button id="stab-drink"   class="stab"        onclick="filterStore('drink_voucher')">☕ ĐỒ UỐNG</button>
+        <button id="stab-merch"   class="stab"        onclick="filterStore('merchandise')">🎁 TẶNG PHẨM</button>
+        <button id="stab-priv"    class="stab"        onclick="filterStore('privilege')">⭐ QUYỀN LỢI</button>
+        <button id="stab-history" class="stab"        onclick="filterStore('history')" style="margin-left:auto">📋 LỊCH SỬ ĐỔI</button>
+      </div>
+
+      <!-- Store grid -->
+      <div id="store-view-main">
+        <div id="store-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- History view -->
+      <div id="store-view-history" style="display:none">
+        <div id="redemption-history-list">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ AI BÁO CÁO ══ -->
+    <div class="page" id="page-aireport">
+      <div class="sh">
+        <div>
+          <div class="sh-t">AI Báo Cáo</div>
+          <div class="sh-s">Phân tích văn hóa team bằng AI</div>
+        </div>
+        <button class="btn" onclick="generateAIReport()" id="btn-gen-report" style="font-size:12px;padding:8px 16px">◈ Tạo báo cáo mới</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px">
+        <div style="border:1.5px solid var(--black);padding:16px;text-align:center">
+          <div id="ai-stat-recogs" style="font-size:28px;font-weight:900">-</div>
+          <div style="font-size:10px;letter-spacing:.1em;color:var(--text3);margin-top:3px">BÀI ĐĂNG / TUẦN</div>
+        </div>
+        <div style="border:1.5px solid var(--black);padding:16px;text-align:center">
+          <div id="ai-stat-stars" style="font-size:28px;font-weight:900">-</div>
+          <div style="font-size:10px;letter-spacing:.1em;color:var(--text3);margin-top:3px">★ TẶNG / TUẦN</div>
+        </div>
+        <div style="border:1.5px solid var(--black);padding:16px;text-align:center">
+          <div id="ai-stat-active" style="font-size:28px;font-weight:900">-</div>
+          <div style="font-size:10px;letter-spacing:.1em;color:var(--text3);margin-top:3px">NHÂN VIÊN ACTIVE</div>
+        </div>
+        <div style="border:1.5px solid var(--black);padding:16px;text-align:center">
+          <div id="ai-stat-mood" style="font-size:28px;font-weight:900">-</div>
+          <div style="font-size:10px;letter-spacing:.1em;color:var(--text3);margin-top:3px">CHỈ SỐ VĂN HÓA</div>
+        </div>
+      </div>
+      <div style="border:1.5px solid var(--black);padding:22px;margin-bottom:18px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:14px">◈ Phân Tích AI</div>
+        <div id="ai-report-content" style="font-size:13px;line-height:1.8;color:var(--text2)">
+          <div style="text-align:center;padding:40px 0;color:var(--text3)">
+            <div style="font-size:36px;margin-bottom:10px">◈</div>
+            <div style="font-size:13px">Nhấn "Tạo báo cáo mới" để AI phân tích văn hóa team</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div style="border:1.5px solid var(--border-soft);padding:16px">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.1em;margin-bottom:12px">TOP NGƯỜI NHẬN NHIỀU ★ NHẤT</div>
+          <div id="ai-top-receivers" style="font-size:12px;color:var(--text3)">-</div>
+        </div>
+        <div style="border:1.5px solid var(--border-soft);padding:16px">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.1em;margin-bottom:12px">HOẠT ĐỘNG THEO PHÒNG BAN</div>
+          <div id="ai-dept-breakdown" style="font-size:12px;color:var(--text3)">-</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="page" id="page-profile">
+      <div class="prof-banner">
+        <div class="profav" id="prof-av" style="background:var(--gold)">?</div>
+        <div>
+          <div class="pnm2" id="prof-name">...</div>
+          <div class="pdpt2" id="prof-dept">...</div>
+          <div class="brow" id="prof-badges"></div>
+        </div>
+        <div class="profnums">
+          <div><div class="pnv" id="prof-stars">0</div><div class="pnl">Sao nhận</div></div>
+          <div><div class="pnv" id="prof-given">0</div><div class="pnl">Sao tặng</div></div>
+          <div><div class="pnv" id="prof-posts">0</div><div class="pnl">Bài đăng</div></div>
+          <div><div class="pnv" id="prof-rank">#—</div><div class="pnl">Rank</div></div>
+        </div>
+      </div>
+      <!-- Level + Points card -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:14px">
+        <div style="border:1.5px solid var(--black);padding:16px;text-align:center">
+          <div id="prof-level-icon" style="font-size:28px;margin-bottom:4px">🥉</div>
+          <div id="prof-level-name" style="font-size:13px;font-weight:800;letter-spacing:.06em">BRONZE</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px">Level</div>
+          <div style="margin-top:8px;height:4px;background:var(--bg2);border-radius:2px;overflow:hidden">
+            <div id="prof-level-bar" style="height:100%;background:var(--gold);border-radius:2px;transition:.4s;width:0%"></div>
+          </div>
+          <div id="prof-level-progress" style="font-size:10px;color:var(--text3);margin-top:4px">0 / 50</div>
+        </div>
+        <div style="border:1.5px solid var(--border-soft);padding:16px;text-align:center">
+          <div id="prof-reputation" style="font-size:26px;font-weight:900;color:var(--gold)">0</div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-top:4px">Reputation Points</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">Dùng cho rank & leaderboard</div>
+        </div>
+        <div style="border:1.5px solid var(--border-soft);padding:16px;text-align:center">
+          <div id="prof-redeemable" style="font-size:26px;font-weight:900;color:var(--black)">0</div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-top:4px">Redeemable Points</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px">Dùng để đổi quà</div>
+          <button class="btn btn-outline" onclick="go('store')" style="font-size:10px;padding:4px 10px;margin-top:8px">Đổi quà →</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="ct">Lời cảm ơn gần đây nhận được</div>
+        <div id="prof-received">
+          <div class="loading" style="height:100px"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- ĐỔI MẬT KHẨU -->
+      <div class="card" style="margin-top:14px">
+        <div class="ct">🔒 Đổi mật khẩu</div>
+        <div style="max-width:400px">
+          <div class="field" style="margin-bottom:10px">
+            <label style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:5px">Mật khẩu mới</label>
+            <input class="inp" id="new-pass" type="password" placeholder="Tối thiểu 6 ký tự" style="margin-bottom:0">
+          </div>
+          <div class="field" style="margin-bottom:12px">
+            <label style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);display:block;margin-bottom:5px">Xác nhận mật khẩu mới</label>
+            <input class="inp" id="confirm-pass" type="password" placeholder="Nhập lại mật khẩu mới" style="margin-bottom:0">
+          </div>
+          <div id="pass-err" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none;padding:8px 12px;background:rgba(139,26,26,.06);border-left:3px solid var(--red)"></div>
+          <button class="btn btn-black" onclick="changePassword()" id="btn-change-pass">Đổi mật khẩu →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- EMPLOYEE PROFILE MODAL -->
+    <div class="modal-bg" id="emp-modal">
+      <div class="modal-box" style="width:520px">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+          <div class="av" id="emp-av" style="width:52px;height:52px;font-size:18px;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div id="emp-name" style="font-size:17px;font-weight:800;letter-spacing:.06em;text-transform:uppercase"></div>
+            <div id="emp-meta" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
+          </div>
+          <div style="text-align:right">
+            <div id="emp-stars" style="font-size:24px;font-weight:800;color:var(--gold)"></div>
+            <div style="font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase">Tổng sao</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1.5px solid var(--black);margin-bottom:16px">
+          <div style="padding:12px;text-align:center;border-right:1px solid var(--border-soft)">
+            <div id="emp-rank" style="font-size:20px;font-weight:800;color:var(--gold)">—</div>
+            <div style="font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:3px">Rank</div>
+          </div>
+          <div style="padding:12px;text-align:center;border-right:1px solid var(--border-soft)">
+            <div id="emp-posts" style="font-size:20px;font-weight:800">—</div>
+            <div style="font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:3px">Bài đăng</div>
+          </div>
+          <div style="padding:12px;text-align:center">
+            <div id="emp-month" style="font-size:20px;font-weight:800;color:var(--gold)">—</div>
+            <div style="font-size:10px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:3px">★ Tháng này</div>
+          </div>
+        </div>
+        <div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Email</div>
+        <div id="emp-email" style="font-size:13px;margin-bottom:14px;padding:8px 12px;background:var(--bg2);border:1px solid var(--border-soft)"></div>
+        <div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Lời cảm ơn gần đây</div>
+        <div id="emp-recent" style="max-height:160px;overflow-y:auto"></div>
+        <div class="mf" style="margin-top:16px">
+          <button class="btn btn-outline" onclick="closeEmpModal()">Đóng</button>
+          <button class="btn btn-red" id="emp-delete-btn" onclick="">Xóa tài khoản</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="page" id="page-admin">
+      <div class="sh"><div><div class="sh-t">Admin Panel</div><div class="sh-s">Quản lý hệ thống</div></div></div>
+      <div class="stats-row" style="margin-bottom:20px">
+        <div class="sb"><div class="sbl">Nhân viên</div><div class="sbv" id="adm-users">—</div><div class="sbi">◈</div></div>
+        <div class="sb"><div class="sbl">Bài đăng tháng</div><div class="sbv" id="adm-posts">—</div><div class="sbi">◉</div></div>
+        <div class="sb hl"><div class="sbl">Tổng ★ phát ra</div><div class="sbv" id="adm-stars">—</div><div class="sbi">★</div></div>
+        <div class="sb" style="border-bottom:3px solid var(--red)"><div class="sbl">Cảnh báo</div><div class="sbv" style="color:var(--red)" id="adm-flags">—</div><div class="sbi">⚠</div></div>
+      </div>
+      <!-- TABS -->
+      <div class="tabs" style="margin-bottom:18px">
+        <div class="tab active" onclick="adminTab('pending',this)">⏳ Chờ duyệt</div>
+        <div class="tab" onclick="adminTab('employees',this)">👥 Nhân viên</div>
+        <div class="tab" onclick="adminTab('depts',this)">🏢 Phòng ban</div>
+        <div class="tab" onclick="adminTab('logo',this)">🖼 Logo</div>
+        <div class="tab" onclick="adminTab('admins',this)">★ Admin</div>
+        <div class="tab" onclick="adminTab('flags',this)">⚠ Cảnh báo</div>
+        <div class="tab" onclick="adminTab('fraud',this)">🔍 Chống gian lận</div>
+        <div class="tab" onclick="adminTab('history',this)">📋 Lịch sử</div>
+        <div class="tab" onclick="adminTab('rewards',this)">🎁 Đổi quà</div>
+      </div>
+
+      <!-- PENDING USERS -->
+      <div id="admin-section-pending">
+      <div class="card" style="margin-bottom:16px">
+        <div class="ct">⏳ Tài khoản chờ duyệt</div>
+        <div id="pending-users">
+          <div class="loading" style="height:60px"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      </div>
+      <div id="admin-section-depts" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="ct">🏢 Quản lý phòng ban</div>
+
+          <!-- KHỐI VĂN PHÒNG -->
+          <div style="margin-bottom:18px">
+            <div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:8px 12px;background:var(--black);color:#FFF;margin-bottom:10px">KHỐI VĂN PHÒNG</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <input class="inp" id="new-dept-vanphong" placeholder="Tên phòng ban mới..." style="flex:1;margin-bottom:0">
+              <button class="btn btn-black" onclick="addDept('KHỐI VĂN PHÒNG')" style="white-space:nowrap">+ Thêm</button>
+            </div>
+            <div id="depts-vanphong-list"></div>
+          </div>
+
+          <!-- KHỐI CỬA HÀNG -->
+          <div>
+            <div style="font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;padding:8px 12px;background:var(--black);color:#FFF;margin-bottom:10px">KHỐI CỬA HÀNG</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <input class="inp" id="new-dept-cuahang" placeholder="Tên cửa hàng / vị trí mới..." style="flex:1;margin-bottom:0">
+              <button class="btn btn-black" onclick="addDept('KHỐI CỬA HÀNG')" style="white-space:nowrap">+ Thêm</button>
+            </div>
+            <div id="depts-cuahang-list"></div>
+          </div>
+        </div>
+      </div>
+      <div id="admin-section-logo" style="display:none">
+      <!-- LOGO UPLOAD -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="ct">🖼 Logo công ty</div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div id="logo-preview" style="width:60px;height:60px;border:1.5px solid var(--border-soft);display:flex;align-items:center;justify-content:center;background:var(--bg2);font-size:10px;color:var(--text3);text-align:center">Logo hiện tại</div>
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Upload logo mới (PNG, JPG, SVG · tối đa 2MB)</div>
+            <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+            <button class="btn btn-outline" onclick="document.getElementById('logo-file').click()">Chọn file logo →</button>
+          </div>
+        </div>
+      </div>
+
+      </div>
+
+      <div id="admin-section-admins" style="display:none">
+      <!-- PROMOTE ADMIN -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="ct">★ Quản lý Admin</div>
+        <div id="admin-list">
+          <div class="loading" style="height:60px"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      </div>
+      <div id="admin-section-flags" style="display:none">
+      <div class="card" style="margin-bottom:16px">
+        <div class="ct">⚠ Anti-Gaming Warnings</div>
+        <div id="flags-list">
+          <div class="loading" style="height:80px"><div class="spinner"></div></div>
+        </div>
+      </div>
+      </div>
+      <div id="admin-section-employees" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="ct">👥 Danh sách nhân viên</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input class="inp" id="emp-search" placeholder="Tìm theo tên hoặc email..." style="flex:1;margin-bottom:0" oninput="filterEmployees()">
+            <select class="inp" id="emp-filter-branch" style="width:160px;margin-bottom:0" onchange="filterEmployees()">
+              <option value="">Tất cả chi nhánh</option>
+            </select>
+          </div>
+          <div id="employees-table-wrap" style="overflow-x:auto">
+            <table class="ht" id="employees-table">
+              <thead><tr><th>Nhân viên</th><th>Email</th><th>Khối</th><th>Bộ phận</th><th>★ Tổng</th><th>Role</th><th></th></tr></thead>
+              <tbody id="employees-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="admin-section-fraud" style="display:none">
+        <!-- FRAUD STATS -->
+        <div class="stats-row" style="margin-bottom:16px">
+          <div class="sb"><div class="sbl">Tổng cảnh báo</div><div class="sbv" id="fraud-total" style="color:var(--red)">—</div><div class="sbi">🔍</div></div>
+          <div class="sb"><div class="sbl">Chưa xử lý</div><div class="sbv" id="fraud-pending" style="color:var(--red)">—</div><div class="sbi">⚠</div></div>
+          <div class="sb"><div class="sbl">Vòng tròn</div><div class="sbv" id="fraud-circles">—</div><div class="sbi">↺</div></div>
+          <div class="sb hl"><div class="sbl">Sao nghi ngờ</div><div class="sbv" id="fraud-stars">—</div><div class="sbi">★</div></div>
+        </div>
+        <!-- ACTIONS -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+          <button class="btn btn-black" onclick="runFraudAnalysis()">🔍 Quét vòng tròn ngay</button>
+          <button class="btn btn-outline" onclick="runSpikeAnalysis()">📈 Quét tăng đột biến</button>
+          <button class="btn btn-outline" onclick="updateTrustScores()">★ Cập nhật Trust Score</button>
+        </div>
+        <!-- FRAUD LIST -->
+        <div class="card">
+          <div class="ct">Danh sách cảnh báo gian lận</div>
+          <div id="fraud-list">
+            <div class="loading" style="height:80px"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <!-- LOW TRUST USERS -->
+        <div class="card" style="margin-top:14px">
+          <div class="ct">⚠ Nhân viên Trust Score thấp (dưới 70)</div>
+          <div id="low-trust-list">
+            <div class="loading" style="height:60px"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </div>
+      <div id="admin-section-history" style="display:none">
+      <div style="border:1.5px solid var(--black);overflow:hidden">
+        <div style="padding:11px 14px;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--text3);background:var(--bg2);border-bottom:1.5px solid var(--black)">Lịch sử tặng điểm gần đây</div>
+        <table class="ht">
+          <thead><tr><th>Thời gian</th><th>Từ</th><th>Đến</th><th>Sao</th><th>Giá trị</th></tr></thead>
+          <tbody id="history-body">
+            <tr><td colspan="5"><div class="loading"><div class="spinner"></div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      </div>
+
+      <!-- REWARDS ADMIN -->
+      <div id="admin-section-rewards" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="ct">🎁 Quản lý Phần Thưởng</div>
+          <div style="background:var(--bg2);border:1.5px solid var(--border-soft);padding:16px;margin-bottom:16px">
+            <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px">+ Thêm phần thưởng mới</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div><label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px">Tên *</label>
+                <input id="rw-name" class="inp" placeholder="VD: Voucher Trà Sữa" style="width:100%;box-sizing:border-box"></div>
+              <div><label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px">Mô tả</label>
+                <input id="rw-desc" class="inp" placeholder="VD: 1 ly trà sữa miễn phí" style="width:100%;box-sizing:border-box"></div>
+              <div><label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px">Loại *</label>
+                <select id="rw-cat" class="inp" style="width:100%;box-sizing:border-box">
+                  <option value="drink_voucher">☕ Đồ uống</option>
+                  <option value="merchandise">🎁 Tặng phẩm</option>
+                  <option value="privilege">⭐ Quyền lợi</option>
+                </select></div>
+              <div><label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px">Điểm cần *</label>
+                <input id="rw-points" class="inp" type="number" placeholder="50" min="1" style="width:100%;box-sizing:border-box"></div>
+              <div><label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px">Hạn dùng (ngày, bỏ trống = không hạn)</label>
+                <input id="rw-expiry" class="inp" type="number" placeholder="7" min="1" style="width:100%;box-sizing:border-box"></div>
+              <div><label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px">Emoji icon</label>
+                <input id="rw-emoji" class="inp" placeholder="🎁" style="width:100%;box-sizing:border-box" value="🎁"></div>
+            </div>
+            <button class="btn btn-black" style="width:100%" onclick="addReward()">+ Thêm phần thưởng</button>
+          </div>
+          <div id="rewards-admin-list"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+        <div class="card">
+          <div class="ct">📋 Lịch sử đổi quà của nhân viên</div>
+          <div style="margin-bottom:12px">
+            <input id="voucher-search" class="inp" placeholder="Tìm tên nhân viên hoặc mã voucher..." style="width:100%;box-sizing:border-box" oninput="searchVoucher()">
+          </div>
+          <div id="redemptions-admin-list"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODAL: Tặng sao nhanh -->
+<div class="modal-bg" id="give-modal">
+  <div class="modal-box">
+    <div class="mt2">★ Tặng Sao Nhanh</div>
+    <div class="ms2" id="modal-quota-txt">Còn — sao hôm nay · Max 5★/ngày</div>
+    <div style="margin-bottom:11px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Người nhận</div>
+      <select class="inf" id="modal-to" style="margin-bottom:0"><option value="">Chọn đồng nghiệp...</option></select>
+    </div>
+    <div style="margin-bottom:11px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:7px">Số sao tặng</div>
+      <div style="display:flex;gap:6px">
+        <div class="so sel" data-stars="1" onclick="selStar(this)" style="flex:1;text-align:center">1★</div>
+        <div class="so" data-stars="2" onclick="selStar(this)" style="flex:1;text-align:center">2★</div>
+        <div class="so" data-stars="3" onclick="selStar(this)" style="flex:1;text-align:center">3★</div>
+        <div class="so" data-stars="5" onclick="selStar(this)" style="flex:1;text-align:center">5★</div>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Ghi chú (tùy chọn)</div>
+      <textarea class="inf" id="modal-msg" style="min-height:55px;margin-bottom:0" placeholder="Lý do ghi nhận..."></textarea>
+    </div>
+    <div class="mf">
+      <button class="btn btn-outline" onclick="closeModal()">Hủy</button>
+      <button class="btn btn-black" onclick="sendGift()" id="btn-give">Gửi ngay →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toastEl"><span>✦</span><span id="tmsg">OK</span></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// SUPABASE CONFIG
+// ═══════════════════════════════════════════════
+const SUPABASE_URL = 'https://zkdothuvthxenonehnyj.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZG90aHV2dGh4ZW5vbmVobnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTgxMTAsImV4cCI6MjA4ODUzNDExMH0.O4xPbe07-8d0VDUmpt1UukIsN-tEeLbdK9EHUYctSHs';
+const STORAGE_KEY = 'sw_session';
+
+// Supabase client - chỉ dùng cho realtime và storage upload
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+});
+
+let currentUser   = null;
+let currentProfile = null;
+let _token        = null;
+let realtimeChannel = null;
+
+// ═══════════════════════════════════════════════
+// CORE: REST fetch với token
+// ═══════════════════════════════════════════════
+async function api(method, path, body) {
+  const m = method || 'GET';
+  let prefer = '';
+  if (m === 'POST' && !path.startsWith('rpc')) prefer = 'return=representation';
+  if (m === 'PATCH' || m === 'DELETE') prefer = 'return=minimal';
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    method: m,
+    headers: {
+      'apikey':        SUPABASE_KEY,
+      'Authorization': 'Bearer ' + (_token || SUPABASE_KEY),
+      'Content-Type':  'application/json',
+      ...(prefer ? { 'Prefer': prefer } : {})
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok && res.status !== 200 && res.status !== 204) {
+    const txt = await res.text();
+    throw new Error(res.status + ': ' + txt.slice(0,120));
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function apiGet(path)        { return api('GET',   path);       }
+function apiPost(path, body) { return api('POST',  path, body); }
+function apiRpc(fn, params)  { return api('POST', 'rpc/' + fn, params || {}); }
+
+// ═══════════════════════════════════════════════
+// SESSION: lưu/đọc từ localStorage thủ công
+// ═══════════════════════════════════════════════
+function saveSession(access_token, refresh_token, user) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ access_token, refresh_token, user, saved_at: Date.now() }));
+  _token = access_token;
+  currentUser = user;
+}
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+
+function clearSession() {
+  localStorage.removeItem(STORAGE_KEY);
+  _token = null;
+  currentUser = null;
+  currentProfile = null;
+}
+
+async function refreshToken(refresh_token) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.access_token) {
+      saveSession(data.access_token, data.refresh_token, data.user);
+      return data.access_token;
+    }
+  } catch(e) {}
+  return null;
+}
+
+// ═══════════════════════════════════════════════
+// LOGO
+// ═══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const arr = await fetch(
+      SUPABASE_URL + '/rest/v1/app_settings?key=eq.logo_url&select=value&limit=1',
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+    ).then(r => r.json());
+    if (arr?.[0]?.value) applyLogoEarly(arr[0].value);
+  } catch(e) {}
+});
+
+function applyLogoEarly(url) {
+  if (!url) return;
+  const el = document.getElementById('auth-logo-svg');
+  if (el) {
+    const img = document.createElement('img');
+    img.id = 'auth-logo-svg'; img.src = url;
+    img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
+    el.replaceWith(img);
+  }
+  document.querySelectorAll('.brand-logo').forEach(el => {
+    const img = document.createElement('img');
+    img.src = url; img.className = 'brand-logo';
+    img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
+    el.replaceWith(img);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// AUTH UI
+// ═══════════════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
+  document.getElementById('login-form').style.display     = tab==='login' ? 'block' : 'none';
+  document.getElementById('register-form').style.display  = tab==='register' ? 'block' : 'none';
+  document.getElementById('pending-msg').style.display    = 'none';
+  document.querySelectorAll('.auth-tab').forEach(t => t.style.display = '');
+  const bf = document.getElementById('branch-field');
+  if (bf) bf.style.display = 'none';
+}
+
+async function onKhoiChange(sel) {
+  const khoi = sel.value;
+  const deptField = document.getElementById('dept-field');
+  const deptSel   = document.getElementById('reg-dept');
+  const deptLabel = document.getElementById('dept-label');
+  if (!khoi) { deptField.style.display = 'none'; return; }
+  deptField.style.display = 'block';
+  deptLabel.textContent = khoi === 'KHỐI VĂN PHÒNG' ? 'Phòng ban' : 'Vị trí / Cửa hàng';
+  deptSel.innerHTML = '<option value="">Đang tải...</option>';
+  try {
+    const data = await fetch(
+      SUPABASE_URL + '/rest/v1/departments?khoi=eq.' + encodeURIComponent(khoi) + '&is_active=eq.true&select=name&order=name',
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+    ).then(r => r.json());
+    deptSel.innerHTML = data?.length
+      ? '<option value="">-- Chọn phòng ban --</option>' + data.map(d => `<option value="${d.name}">${d.name}</option>`).join('')
+      : '<option value="">-- Chưa có phòng ban nào --</option>';
+  } catch(e) { deptSel.innerHTML = '<option value="">Lỗi tải dữ liệu</option>'; }
+}
+
+async function onDeptChange(sel) {
+  const bf = document.getElementById('branch-field');
+  if (sel.value === '__branch__') {
+    bf.style.display = 'block';
+    const data = await apiGet('branches?is_active=eq.true&select=name&order=name').catch(() => []);
+    document.getElementById('reg-branch').innerHTML = data?.length
+      ? data.map(b => `<option value="${b.name}">${b.name}</option>`).join('')
+      : '<option value="Hội sở">Hội sở</option>';
+  } else { bf.style.display = 'none'; }
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const err   = document.getElementById('login-err');
+  const btn   = document.getElementById('btn-login');
+  err.style.display = 'none';
+  if (!email || !pass) { showErr(err, 'Vui lòng nhập đầy đủ thông tin'); return; }
+  btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.access_token) {
+      btn.disabled = false; btn.textContent = 'Đăng nhập →';
+      const msg = data.error_description || data.msg || data.message || 'Đăng nhập thất bại';
+      showErr(err, msg.includes('Invalid') ? 'Email hoặc mật khẩu không đúng' : msg);
+      return;
+    }
+    saveSession(data.access_token, data.refresh_token, data.user);
+    await loadApp();
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Đăng nhập →';
+    showErr(err, 'Lỗi kết nối, vui lòng thử lại');
+  }
+}
+
+async function doRegister() {
+  const name  = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const khoi  = document.getElementById('reg-khoi').value;
+  const dept  = document.getElementById('reg-dept').value;
+  const pass  = document.getElementById('reg-pass').value;
+  const err   = document.getElementById('reg-err');
+  const btn   = document.getElementById('btn-reg');
+  if (!name||!email||!pass) { showErr(err,'Vui lòng nhập đầy đủ thông tin'); return; }
+  if (!khoi) { showErr(err,'Vui lòng chọn khối'); return; }
+  if (!dept) { showErr(err,'Vui lòng chọn phòng ban'); return; }
+  if (pass.length < 6) { showErr(err,'Mật khẩu tối thiểu 6 ký tự'); return; }
+  btn.disabled = true; btn.textContent = 'Đang tạo tài khoản...';
+  const t = setTimeout(() => { btn.disabled=false; btn.textContent='Đăng ký →'; showErr(err,'Kết nối chậm, thử lại'); }, 10000);
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/signup', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass, data: { full_name: name, department: dept, khoi } })
+    });
+    clearTimeout(t); btn.disabled=false; btn.textContent='Đăng ký →';
+    const data = await res.json();
+    if (!res.ok) { showErr(err, data.msg || data.message || 'Đăng ký thất bại'); return; }
+    document.getElementById('register-form').style.display = 'none';
+    document.getElementById('pending-msg').style.display   = 'block';
+  } catch(e) {
+    clearTimeout(t); btn.disabled=false; btn.textContent='Đăng ký →';
+    showErr(err,'Lỗi kết nối, thử lại');
+  }
+}
+
+function doLogout() {
+  try { if (notifChannel) sb.removeChannel(notifChannel); } catch(_) {}
+  try { if (realtimeChannel) sb.removeChannel(realtimeChannel); } catch(_) {}
+  clearSession();
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('auth-screen').style.display    = 'flex';
+  document.getElementById('login-form').style.display     = 'block';
+  document.getElementById('register-form').style.display  = 'none';
+  document.getElementById('pending-msg').style.display    = 'none';
+  document.querySelectorAll('.auth-tab').forEach(t => t.style.display = '');
+}
+
+function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+
+// ═══════════════════════════════════════════════
+// INIT — đơn giản: đọc session từ localStorage
+// ═══════════════════════════════════════════════
+(async () => {
+  const sess = loadSession();
+  if (!sess) {
+    document.getElementById('auth-screen').style.display = 'flex';
+    return;
+  }
+  // Có session → thử dùng access_token hiện tại
+  _token = sess.access_token;
+  currentUser = sess.user;
+  // Thử load app, nếu token hết hạn thì refresh
+  const ok = await loadApp();
+  if (!ok) {
+    // Token hết hạn → refresh
+    const newToken = await refreshToken(sess.refresh_token);
+    if (newToken) {
+      await loadApp();
+    } else {
+      clearSession();
+      document.getElementById('auth-screen').style.display = 'flex';
+    }
+  }
+})();
+
+async function loadApp() {
+  const loginBtn = document.getElementById('btn-login');
+  if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Đăng nhập →'; }
+
+  try {
+    const arr = await apiGet('profiles?id=eq.' + currentUser.id + '&select=*&limit=1');
+    const profile = Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
+
+    if (!profile) { clearSession(); document.getElementById('auth-screen').style.display = 'flex'; return false; }
+
+    if (!profile.is_approved) {
+      clearSession();
+      document.getElementById('auth-screen').style.display   = 'flex';
+      document.getElementById('login-form').style.display    = 'none';
+      document.getElementById('register-form').style.display = 'none';
+      document.getElementById('pending-msg').style.display   = 'block';
+      document.querySelectorAll('.auth-tab').forEach(t => t.style.display = 'none');
+      return false;
+    }
+
+    currentProfile = profile;
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app').classList.add('visible');
+
+    document.getElementById('sidebar-av').textContent    = profile.avatar_text || '?';
+    document.getElementById('sidebar-name').textContent  = profile.full_name;
+    document.getElementById('sidebar-dept').textContent  = profile.branch ? profile.branch + ' · ' + profile.department : profile.department;
+    document.getElementById('sidebar-stars').textContent = (profile.total_stars || 0) + '★';
+    const topbarAv    = document.getElementById('topbar-av');
+    const topbarStars = document.getElementById('topbar-stars');
+    if (topbarAv)    topbarAv.textContent    = profile.avatar_text || '?';
+    if (topbarStars) topbarStars.textContent = (profile.total_stars || 0) + '★';
+
+    if (profile.role === 'admin' || profile.role === 'manager') {
+      document.getElementById('admin-nav-group').style.display = 'block';
+      document.getElementById('admin-nav-item').style.display  = 'flex';
+    }
+
+    loadLogo();
+    await Promise.allSettled([
+      loadFeed().catch(e => console.warn('loadFeed:', e)),
+      loadQuota().catch(e => console.warn('loadQuota:', e)),
+      loadMiniLeaderboard().catch(e => console.warn('loadMiniLeaderboard:', e)),
+      loadActiveChallenges().catch(e => console.warn('loadActiveChallenges:', e)),
+      loadEmployees().catch(e => console.warn('loadEmployees:', e)),
+    ]);
+
+    setupNotifSubscription();
+    realtimeChannel = sb.channel('recognitions-feed')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'recognitions' }, payload => {
+        prependPost(payload.new); updateTicker();
+      }).subscribe();
+    updateTicker();
+    return true;
+
+  } catch(e) {
+    console.error('[loadApp] crash:', e.message);
+    // Nếu 401 → token hết hạn, return false để caller refresh
+    if (e.message?.startsWith('401')) return false;
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app').classList.remove('visible');
+    const eEl = document.getElementById('login-err');
+    if (eEl) { eEl.textContent = '⚠️ Lỗi: ' + e.message; eEl.style.display = 'block'; }
+    return false;
+  }
+}
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function go(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  const T = { feed:'Trang Chủ', leaderboard:'Bảng Xếp Hạng', wall:'Culture Wall', challenges:'Thử Thách', store:'Cửa Hàng Đổi Quà', aireport:'AI Báo Cáo', profile:'Hồ Sơ Của Tôi', admin:'Admin Panel' };
+  document.getElementById('page-title').textContent = T[id] || id;
+  document.querySelectorAll('.ni').forEach(n => { if (n.getAttribute('onclick')?.includes("'"+id+"'")) n.classList.add('active'); });
+
+  // Lazy load pages
+  if (id === 'leaderboard') { loadLeaderboard(); loadBranchTabs(); }
+  if (id === 'wall')        loadWall();
+  if (id === 'challenges')  loadChallenges();
+  if (id === 'profile')     loadProfile();
+  if (id === 'admin')       loadAdmin();
+  if (id === 'store')       loadStore();
+  if (id === 'aireport')    loadAIReport();
+}
+
+// ═══════════════════════════════════════════════
+// LOAD EMPLOYEES (for dropdowns)
+// ═══════════════════════════════════════════════
+async function loadEmployees() {
+  const { data } = await sb.from('profiles').select('id, full_name, department').eq('is_active', true).neq('id', currentUser.id).order('full_name');
+  const selects = ['compose-to', 'modal-to'];
+  selects.forEach(id => {
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="">Chọn người nhận...</option>';
+    (data || []).forEach(p => {
+      sel.innerHTML += `<option value="${p.id}">${p.full_name} – ${p.department}</option>`;
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════
+// QUOTA
+// ═══════════════════════════════════════════════
+async function loadQuota() {
+  const data = await apiRpc('get_my_quota', {}).catch(() => null);
+  if (!data) return;
+  const used = data.used || 0;
+  const max  = data.max  || 5;
+  const rem  = data.remaining || 0;
+
+  document.getElementById('stat-quota').textContent = rem;
+  document.getElementById('modal-quota-txt').textContent = `Còn ${rem}★ hôm nay · Max ${max}★/ngày`;
+
+  const row = document.getElementById('quota-row');
+  row.innerHTML = '';
+  for (let i = 0; i < max; i++) {
+    const used_class = i < used ? 'qs used' : 'qs';
+    row.innerHTML += `<div class="${used_class}"><span>★</span></div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// FEED
+// ═══════════════════════════════════════════════
+async function loadFeed() {
+  const fl = document.getElementById('fl');
+  fl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  const recs = await apiGet('recognitions?select=*,from_profile:profiles!from_user_id(full_name,avatar_text,department),to_profile:profiles!to_user_id(full_name,avatar_text,department)&order=created_at.desc&limit=30').catch(() => null);
+  const error = null;
+
+  if (error || !recs?.length) {
+    fl.innerHTML = '<div class="empty-state"><div class="empty-icon">◈</div><div class="empty-txt">Chưa có lời cảm ơn nào</div><div style="font-size:12px;margin-top:8px;color:var(--text3)">Hãy là người đầu tiên ghi nhận đồng đội!</div></div>';
+    return;
+  }
+
+  // Count my posts & received this month
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const myPosts    = recs.filter(r => r.from_user_id === currentUser.id && r.created_at >= monthStart).length;
+  const myReceived = recs.filter(r => r.to_user_id   === currentUser.id && r.created_at >= monthStart).length;
+  document.getElementById('stat-posts').textContent    = myPosts;
+  document.getElementById('stat-received').textContent = myReceived;
+
+  // Total stars
+  if (currentProfile) document.getElementById('stat-total').textContent = currentProfile.total_stars;
+
+  fl.innerHTML = recs.map(r => renderPost(r)).join('');
+}
+
+function renderPost(r) {
+  const from = r.from_profile;
+  const to   = r.to_profile;
+  if (!from || !to) return '';
+  const stars   = '★'.repeat(r.stars);
+  const valMap  = { teamwork:'Teamwork', customer_first:'Customer First', innovation:'Innovation', ownership:'Ownership', integrity:'Integrity' };
+  const valClass= { teamwork:'vt-tw', customer_first:'vt-cf', innovation:'vt-in', ownership:'vt-ow', integrity:'vt-it' };
+  const ago     = timeAgo(r.created_at);
+  const avColor = strToColor(from.full_name);
+  return `
+  <div class="pc" id="post-${r.id}">
+    <div class="ph">
+      <div class="av" style="background:${avColor};color:#FFF;border:none">${from.avatar_text||'?'}</div>
+      <div class="pm">
+        <div class="pn"><strong>${esc(from.full_name)}</strong><span class="arr">→</span><strong>${esc(to.full_name)}</strong></div>
+        <div class="pt">${ago} · ${esc(from.department)}</div>
+      </div>
+      <span class="vtag ${valClass[r.value_tag]||'vt-tw'}">${valMap[r.value_tag]||r.value_tag}</span>
+    </div>
+    <div class="pb">${esc(r.message)}</div>
+    ${r.image_url ? `<div style="margin-bottom:10px"><img src="${r.image_url}" style="max-width:100%;max-height:220px;border:1.5px solid var(--border-soft);display:block;cursor:pointer" onclick="window.open('${r.image_url}','_blank')"></div>` : ''}
+    <div class="sa">${stars} &nbsp;+${r.stars} Sao kinh nghiệm</div>
+    <div class="pacts">
+      <button class="ab" onclick="toggleLike('${r.id}',this)">Thích · ${r.like_count||0}</button>
+    </div>
+  </div>`;
+}
+
+async function prependPost(r) {
+  // Fetch full post with profiles
+  const { data } = await sb
+    .from('recognitions')
+    .select(`*, from_profile:profiles!from_user_id(full_name,avatar_text,department), to_profile:profiles!to_user_id(full_name,avatar_text,department)`)
+    .eq('id', r.id).single();
+  if (!data) return;
+  const fl = document.getElementById('fl');
+  const div = document.createElement('div');
+  div.innerHTML = renderPost(data);
+  fl.prepend(div.firstElementChild);
+}
+
+// ═══════════════════════════════════════════════
+// MINI LEADERBOARD
+// ═══════════════════════════════════════════════
+async function loadMiniLeaderboard() {
+  const data = await apiRpc('get_leaderboard', { p_limit: 5 }).catch(() => null);
+  const el = document.getElementById('mini-lb');
+  if (!data?.length) { el.innerHTML = '<div class="empty-state" style="padding:20px"><div class="empty-txt">Chưa có dữ liệu</div></div>'; return; }
+  el.innerHTML = data.map((p,i) => `
+    <div class="rr ${i===0?'r1':''}">
+      <div class="rpos">${i+1}</div>
+      <div class="av" style="width:26px;height:26px;font-size:10px;background:${strToColor(p.full_name)};color:#FFF;border:none;flex-shrink:0">${p.avatar_text||'?'}</div>
+      <div><div class="rname">${esc(p.full_name)}</div><div class="rdept">${esc(p.department)}</div></div>
+      <div class="rscore">${p.stars_this_month}★</div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+// LEADERBOARD PAGE
+// ═══════════════════════════════════════════════
+let currentBranchFilter = null;
+
+async function filterBranch(branch, el) {
+  currentBranchFilter = branch;
+  document.querySelectorAll('#branch-tabs .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  loadLeaderboard();
+}
+
+async function loadBranchTabs() {
+  const { data } = await sb.from('branches').select('name').eq('is_active', true).order('name');
+  const tabs = document.getElementById('branch-tabs');
+  if (!tabs || !data?.length) return;
+  const extra = data.map(b => `<div class="tab" onclick="filterBranch('${b.name}',this)">${esc(b.name)}</div>`).join('');
+  tabs.innerHTML = '<div class="tab active" onclick="filterBranch(null,this)">Tất cả</div>' + extra;
+}
+
+async function loadLeaderboard() {
+  // Loading state
+  const lbPodiumEl = document.getElementById('lb-podium');
+  const lbBodyEl   = document.getElementById('lb-body');
+  if (lbPodiumEl) lbPodiumEl.innerHTML = '<div class="loading" style="height:120px;flex:1"><div class="spinner"></div></div>';
+  
+  const { data, error } = await sb.rpc('get_leaderboard', { p_limit: 20, p_branch: currentBranchFilter || null });
+  if (error) { toast('❌ Lỗi tải BXH: ' + error.message); return; }
+  if (!data?.length) {
+    if (lbPodiumEl) lbPodiumEl.innerHTML = '<div class="loading" style="height:120px;flex:1"><div style="color:var(--text3);font-size:12px">Chưa có dữ liệu</div></div>';
+    if (lbBodyEl)   lbBodyEl.innerHTML = '';
+    return;
+  }
+
+  // Podium top 3
+  const podium = document.getElementById('lb-podium');
+  const [p1, p2, p3] = [data[0], data[1], data[2]];
+  podium.innerHTML = `
+    <div class="pi p2">${p2?`<div class="pav" style="background:${strToColor(p2.full_name)};color:#FFF;border:1.5px solid rgba(0,0,0,.1)">${p2.avatar_text||'?'}</div><div class="pnm">${esc(p2.full_name)}</div><div class="pdpt">${esc(p2.department)}</div><div class="psc">${p2.stars_this_month}★</div><div class="prk">🥈 Hạng 2</div>`:'<div style="color:var(--text3)">—</div>'}</div>
+    <div class="pi p1"><div style="font-size:18px;margin-bottom:4px;color:var(--gold)">★</div><div class="pav" style="background:${strToColor(p1.full_name)};color:#FFF;border:2px solid var(--gold)">${p1.avatar_text||'?'}</div><div class="pnm">${esc(p1.full_name)}</div><div class="pdpt">${esc(p1.department)}</div><div class="psc">${p1.stars_this_month}★</div><div class="prk">◆ Hạng 1</div></div>
+    <div class="pi p3">${p3?`<div class="pav" style="background:${strToColor(p3.full_name)};color:#FFF;border:1.5px solid rgba(0,0,0,.1)">${p3.avatar_text||'?'}</div><div class="pnm">${esc(p3.full_name)}</div><div class="pdpt">${esc(p3.department)}</div><div class="psc">${p3.stars_this_month}★</div><div class="prk">🥉 Hạng 3</div>`:'<div style="color:var(--text3)">—</div>'}</div>`;
+
+  // Table
+  document.getElementById('lb-body').innerHTML = data.map((p,i) => `
+    <tr>
+      <td><strong style="color:${i===0?'var(--gold)':'var(--grey)'}">${i===0?'◆ ':''} ${i+1}</strong></td>
+      <td><div style="display:flex;align-items:center;gap:9px"><div class="av" style="width:28px;height:28px;font-size:10px;background:${strToColor(p.full_name)};color:#FFF;border:none">${p.avatar_text||'?'}</div><strong>${esc(p.full_name)}</strong></div></td>
+      <td><span style="background:var(--bg2);padding:2px 8px;font-size:11px;font-weight:700;border:1px solid var(--border-soft)">${esc(p.department)}</span></td>
+      <td style="font-weight:800;color:var(--gold)">${p.stars_this_month}</td>
+      <td>${p.post_count_month}</td>
+    </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+// CULTURE WALL
+// ═══════════════════════════════════════════════
+async function loadWall() {
+  const { data } = await sb
+    .from('recognitions')
+    .select(`*, from_profile:profiles!from_user_id(full_name,avatar_text), to_profile:profiles!to_user_id(full_name,avatar_text)`)
+    .order('created_at', { ascending: false })
+    .limit(30);
+  const el = document.getElementById('wall-grid');
+  if (!data?.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">◉</div><div class="empty-txt">Chưa có nội dung</div></div>'; return; }
+  const valMap  = { teamwork:'TW', customer_first:'CF', innovation:'IN', ownership:'OW', integrity:'IT' };
+  const valClass= { teamwork:'vt-tw', customer_first:'vt-cf', innovation:'vt-in', ownership:'vt-ow', integrity:'vt-it' };
+  el.innerHTML = data.map(r => `
+    <div style="background:#FFF;border:1.5px solid var(--border-soft);border-top:3px solid var(--black);padding:14px;margin-bottom:12px;break-inside:avoid">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <div class="av" style="width:22px;height:22px;font-size:9px;background:${strToColor(r.from_profile?.full_name||'')};color:#FFF;border:none">${r.from_profile?.avatar_text||'?'}</div>
+        <div style="font-size:11px;font-weight:700">${esc(r.from_profile?.full_name||'?')} <span style="color:var(--gold)">→</span> ${esc(r.to_profile?.full_name||'?')}</div>
+        <span class="vtag ${valClass[r.value_tag]||'vt-tw'}" style="margin-left:auto;font-size:9px">${valMap[r.value_tag]||'?'}</span>
+      </div>
+      <div style="font-size:13px;line-height:1.65;font-style:italic;margin-bottom:8px">"${esc(r.message)}"</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:10px;color:var(--text3)">${timeAgo(r.created_at)}</div>
+        <div style="font-size:11px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:.04em">${'★'.repeat(r.stars)}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+// CHALLENGES
+// ═══════════════════════════════════════════════
+async function loadChallenges() {
+  const { data } = await sb.from('challenges').select('*').eq('is_active', true).order('ends_at');
+  const el = document.getElementById('challenges-grid');
+  if (!data?.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-txt">Chưa có thử thách nào</div></div>'; return; }
+  el.innerHTML = data.map(c => {
+    const daysLeft = Math.max(0, Math.ceil((new Date(c.ends_at) - new Date()) / 86400000));
+    return `
+    <div class="cc">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:${daysLeft>0?'#2D8F5A':'var(--grey)'}">${daysLeft>0?'● Đang diễn ra':'○ Đã kết thúc'}</span>
+        <span style="font-size:10px;color:var(--text3)">${daysLeft>0?`Còn ${daysLeft} ngày`:'Đã kết thúc'}</span>
+      </div>
+      <div class="cname">${esc(c.title)}</div>
+      <div class="cdesc">${esc(c.description)}</div>
+      <div class="pb-bar"><div class="pb-fill" style="width:0%"></div></div>
+      <div class="pb-lbl">0/${c.target_count} hoàn thành</div>
+      <div class="crew">Thưởng: <span>+${c.reward_stars}★</span></div>
+    </div>`;
+  }).join('');
+}
+
+async function loadActiveChallenges() {
+  const { data } = await sb.from('challenges').select('*').eq('is_active', true).order('ends_at').limit(1);
+  const el = document.getElementById('active-challenge-widget');
+  if (!data?.length) { el.innerHTML = ''; return; }
+  const c = data[0];
+  const daysLeft = Math.max(0, Math.ceil((new Date(c.ends_at) - new Date()) / 86400000));
+  el.innerHTML = `
+    <div class="cc">
+      <div class="cweek">Challenge Active</div>
+      <div class="cname">${esc(c.title)}</div>
+      <div class="cdesc">${esc(c.description)}</div>
+      <div class="pb-bar"><div class="pb-fill" style="width:0%"></div></div>
+      <div class="pb-lbl">Còn ${daysLeft} ngày</div>
+      <div class="crew">Thưởng: <span>+${c.reward_stars}★</span></div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════
+// PROFILE
+// ═══════════════════════════════════════════════
+async function loadProfile() {
+  if (!currentProfile) return;
+  document.getElementById('prof-av').textContent   = currentProfile.avatar_text || '?';
+  document.getElementById('prof-av').style.background = strToColor(currentProfile.full_name);
+  document.getElementById('prof-name').textContent = currentProfile.full_name;
+  document.getElementById('prof-dept').textContent = `${currentProfile.department} · Từ ${new Date(currentProfile.joined_at).getFullYear()}`;
+  const totalStars = currentProfile.total_stars || 0;
+  const repPoints  = currentProfile.reputation_points  ?? totalStars;
+  const redPoints  = currentProfile.redeemable_points  ?? totalStars;
+  const givenStars = currentProfile.total_given ?? 0;
+  document.getElementById('prof-stars').textContent  = totalStars;
+  document.getElementById('prof-given').textContent  = givenStars;
+  document.getElementById('prof-posts').textContent  = currentProfile.post_count;
+  // Level & dual points
+  if (document.getElementById('prof-reputation')) {
+    document.getElementById('prof-reputation').textContent = repPoints;
+    document.getElementById('prof-redeemable').textContent = redPoints;
+    renderLevelUI(repPoints);
+  }
+
+  // My rank
+  const { data: lb } = await sb.rpc('get_leaderboard', { p_limit: 100 });
+  const myRank = (lb||[]).findIndex(p => p.user_id === currentUser.id) + 1;
+  document.getElementById('prof-rank').textContent = myRank ? `#${myRank}` : '#—';
+
+  // Badges
+  const { data: ubs } = await sb.from('user_badges').select('*, badge:badges(*)').eq('user_id', currentUser.id);
+  const badgesEl = document.getElementById('prof-badges');
+  if (ubs?.length) {
+    badgesEl.innerHTML = ubs.map(ub => `<span class="bb bb-g">${ub.badge.icon} ${ub.badge.name}</span>`).join('');
+  } else {
+    badgesEl.innerHTML = '<span style="font-size:12px;color:var(--text3)">Chưa có badge nào</span>';
+  }
+
+  // Recent received
+  const { data: received } = await sb
+    .from('recognitions')
+    .select(`*, from_profile:profiles!from_user_id(full_name,avatar_text)`)
+    .eq('to_user_id', currentUser.id)
+    .order('created_at', { ascending: false })
+    .limit(5);
+  const recEl = document.getElementById('prof-received');
+  if (!received?.length) { recEl.innerHTML = '<div class="empty-state" style="padding:20px"><div class="empty-txt">Chưa có lời cảm ơn nào</div></div>'; return; }
+  recEl.innerHTML = received.map(r => `
+    <div style="background:var(--bg2);border-left:3px solid var(--gold);padding:11px 13px;margin-bottom:9px">
+      <div style="font-size:12px;font-style:italic;margin-bottom:5px;line-height:1.6">"${esc(r.message)}"</div>
+      <div style="font-size:11px;color:var(--text3);font-weight:700">— ${esc(r.from_profile?.full_name||'?')} · ${timeAgo(r.created_at)} · ${'★'.repeat(r.stars)}</div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════════════════
+async function loadAdmin() {
+  const [usersRes, postsRes, starsRes, flagsRes, pendingRes] = await Promise.all([
+    sb.from('profiles').select('id', { count: 'exact', head: true }).eq('is_approved', true),
+    sb.from('recognitions').select('id', { count: 'exact', head: true }),
+    sb.from('profiles').select('total_stars').eq('is_approved', true),
+    sb.from('gaming_flags').select('*').eq('is_resolved', false).order('created_at', { ascending: false }),
+    sb.from('profiles').select('*').eq('is_approved', false).order('joined_at', { ascending: false }),
+  ]);
+  document.getElementById('adm-users').textContent = usersRes.count || 0;
+  document.getElementById('adm-posts').textContent = postsRes.count || 0;
+  const totalStars = (starsRes.data || []).reduce((s, r) => s + (r.total_stars || 0), 0);
+  document.getElementById('adm-stars').textContent = totalStars;
+  document.getElementById('adm-flags').textContent = flagsRes.data?.length || 0;
+
+  loadAdminList();
+  loadBranches();
+
+  // Pending users
+  const pendingEl = document.getElementById('pending-users');
+  if (pendingEl) {
+    const pending = pendingRes.data || [];
+    if (!pending.length) {
+      pendingEl.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--text3);text-align:center">✓ Không có tài khoản chờ duyệt</div>';
+    } else {
+      pendingEl.innerHTML = pending.map(u => `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border-soft)">
+          <div class="av" style="background:${strToColor(u.full_name)};color:#FFF;border:none;flex-shrink:0">${u.avatar_text||'?'}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700">${esc(u.full_name)}</div>
+            <div style="font-size:11px;color:var(--text3)">${esc(u.email)} · ${esc(u.department)}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-black" style="padding:5px 11px;font-size:10px" onclick="approveUser('${u.id}','${esc(u.full_name)}','${esc(u.email)}')">✓ Duyệt</button>
+            <button class="btn btn-red" style="padding:5px 11px;font-size:10px" onclick="rejectUser('${u.id}','${esc(u.full_name)}')">✗ Từ chối</button>
+            <button class="btn btn-outline" style="padding:5px 11px;font-size:10px" onclick="promoteAdmin('${u.id}','${esc(u.full_name)}')">★ Admin</button>
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  // Flags
+  const flagsEl = document.getElementById('flags-list');
+  if (!flagsRes.data?.length) {
+    flagsEl.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text3);text-align:center">✓ Không có cảnh báo nào</div>';
+  } else {
+    flagsEl.innerHTML = flagsRes.data.map(f => `
+      <div class="warn">
+        <div class="wi">⚠️</div>
+        <div class="wb">
+          <strong>${f.flag_type === 'circle' ? 'Vòng tròn tặng điểm' : 'Bất thường'}</strong>
+          ${f.details?.description || JSON.stringify(f.details)}
+          <div class="wa">
+            <button class="btn btn-outline" style="padding:4px 9px;font-size:10px" onclick="resolveFlag('${f.id}')">Đánh dấu đã xử lý</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  // Recent history
+  const { data: hist } = await sb
+    .from('recognitions')
+    .select(`*, from_profile:profiles!from_user_id(full_name), to_profile:profiles!to_user_id(full_name)`)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  document.getElementById('history-body').innerHTML = (hist||[]).map(r => `
+    <tr>
+      <td style="color:var(--text3)">${timeAgo(r.created_at)}</td>
+      <td>${esc(r.from_profile?.full_name||'?')}</td>
+      <td>${esc(r.to_profile?.full_name||'?')}</td>
+      <td style="font-weight:800;color:var(--gold)">${'★'.repeat(r.stars)}</td>
+      <td>${r.value_tag}</td>
+    </tr>`).join('');
+}
+
+async function resolveFlag(id) {
+  await sb.from('gaming_flags').update({ is_resolved: true, resolved_by: currentUser.id }).eq('id', id);
+  toast('Đã xử lý cảnh báo');
+  loadAdmin();
+}
+
+// ═══════════════════════════════════════════════
+// GIVE STARS / POST
+// ═══════════════════════════════════════════════
+function openCompose() {
+  const c = document.getElementById('ca');
+  c.classList.toggle('open');
+  if (c.classList.contains('open')) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function openGiveModal() {
+  document.getElementById('give-modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('give-modal').classList.remove('open');
+}
+document.getElementById('give-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('give-modal')) closeModal();
+});
+document.getElementById('emp-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('emp-modal')) closeEmpModal();
+});
+
+function selVal(el) {
+  el.closest('.vrow').querySelectorAll('.vc').forEach(v => v.classList.remove('sel'));
+  el.classList.add('sel');
+}
+function selStar(el) {
+  const already = el.classList.contains('sel');
+  // parentElement là div flex chứa tất cả sao
+  el.parentElement.querySelectorAll('.so').forEach(s => s.classList.remove('sel'));
+  if (!already) el.classList.add('sel');
+}
+
+// Image compression
+async function compressImage(file, maxKB = 100) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        const maxDim = 800;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else       { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        let quality = 0.8;
+        const tryCompress = () => {
+          canvas.toBlob((blob) => {
+            if (blob.size > maxKB * 1024 && quality > 0.3) {
+              quality -= 0.1;
+              tryCompress();
+            } else {
+              resolve(blob);
+            }
+          }, 'image/jpeg', quality);
+        };
+        tryCompress();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function previewComposeImage(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const preview = document.getElementById('compose-img-preview');
+    const thumb   = document.getElementById('compose-img-thumb');
+    thumb.src = e.target.result;
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeComposeImage() {
+  document.getElementById('compose-img-input').value = '';
+  document.getElementById('compose-img-preview').style.display = 'none';
+  document.getElementById('compose-img-thumb').src = '';
+}
+
+async function uploadRecognitionImage(file) {
+  const compressed = await compressImage(file, 100);
+  const path = `${currentUser.id}/${Date.now()}.jpg`;
+  const { error } = await sb.storage.from('recognition-images').upload(path, compressed, {
+    contentType: 'image/jpeg', upsert: false
+  });
+  if (error) { console.error('Upload error:', error); return null; }
+  const { data } = sb.storage.from('recognition-images').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function submitPost() {
+  const toId   = document.getElementById('compose-to').value;
+  const msg    = document.getElementById('compose-msg').value.trim();
+  const valEl  = document.querySelector('#ca .vc.sel');
+  const starEl = document.querySelector('#ca .so.sel');
+  if (!toId) { toast('Vui lòng chọn người nhận'); return; }
+  if (!msg)  { toast('Vui lòng viết lời cảm ơn'); return; }
+
+  const val   = valEl?.dataset.val  || 'teamwork';
+  const stars = parseInt(starEl?.dataset.stars || '1');
+  const btn   = document.getElementById('btn-post');
+  btn.disabled = true; btn.textContent = 'Đang gửi...';
+
+  // Upload ảnh nếu có
+  let imageUrl = null;
+  const imgInput = document.getElementById('compose-img-input');
+  if (imgInput.files[0]) {
+    btn.textContent = 'Đang nén ảnh...';
+    imageUrl = await uploadRecognitionImage(imgInput.files[0]);
+  }
+
+  btn.textContent = 'Đang đăng...';
+  let data = null, error = null;
+  try {
+    if (toId === currentUser.id) throw new Error('Không thể tự tặng sao cho mình');
+    // Superadmin bypass quota
+    const isSuperAdmin = currentUser.email === 'loiphambb@gmail.com';
+    if (!isSuperAdmin) {
+      const quotaRes = await apiGet('recognitions?from_user_id=eq.' + currentUser.id + '&select=stars&created_at=gte.' + new Date().toISOString().slice(0,10));
+      const usedToday = Array.isArray(quotaRes) ? quotaRes.reduce((s,r) => s + (r.stars||0), 0) : 0;
+      if (usedToday + stars > 5) throw new Error('Không đủ quota. Còn lại: ' + (5 - usedToday) + '★ hôm nay');
+    }
+    // INSERT recognition
+    await api('POST', 'recognitions', {
+      from_user_id: currentUser.id,
+      to_user_id: toId,
+      stars: stars,
+      message: msg,
+      value_tag: val,
+      image_url: imageUrl
+    });
+    // Cộng điểm người nhận
+    const recvProfile = await apiGet('profiles?id=eq.' + toId + '&select=total_stars,redeemable_points,reputation_points&limit=1');
+    if (recvProfile?.[0]) {
+      const p = recvProfile[0];
+      await api('PATCH', 'profiles?id=eq.' + toId, {
+        total_stars: (p.total_stars||0) + stars,
+        redeemable_points: (p.redeemable_points||0) + stars,
+        reputation_points: (p.reputation_points||0) + stars
+      });
+    }
+    data = { success: true };
+  } catch(e) { error = e; }
+
+  btn.disabled = false; btn.textContent = 'Đăng ngay →';
+
+  if (error || !data?.success) {
+    toast('❌ ' + (error?.message || 'Lỗi không xác định'));
+    return;
+  }
+  toast('✦ Đã đăng lời cảm ơn thành công!');
+
+  document.getElementById('ca').classList.remove('open');
+  document.getElementById('compose-msg').value = '';
+  document.getElementById('compose-to').value  = '';
+  removeComposeImage();
+  await loadQuota();
+}
+
+async function sendGift() {
+  const toId   = document.getElementById('modal-to').value;
+  const msg    = document.getElementById('modal-msg').value.trim();
+  const starEl = document.querySelector('#give-modal .so.sel');
+  if (!toId) { toast('Vui lòng chọn người nhận'); return; }
+
+  const stars = parseInt(starEl?.dataset.stars || '1');
+  const btn   = document.getElementById('btn-give');
+  btn.disabled = true; btn.textContent = 'Đang gửi...';
+
+  let data = null, gErr = null;
+  try {
+    // Superadmin bypass quota
+    const isSuperAdmin = currentUser.email === 'loiphambb@gmail.com';
+    if (!isSuperAdmin) {
+      const quotaRes = await apiGet('recognitions?from_user_id=eq.' + currentUser.id + '&select=stars&created_at=gte.' + new Date().toISOString().slice(0,10));
+      const usedToday = Array.isArray(quotaRes) ? quotaRes.reduce((s,r) => s + (r.stars||0), 0) : 0;
+      if (usedToday + stars > 5) {
+        toast('❌ Không đủ quota. Còn lại: ' + (5 - usedToday) + '★ hôm nay');
+        btn.disabled = false; btn.textContent = 'Gửi ngay →';
+        return;
+      }
+    }
+    if (toId === currentUser.id) {
+      toast('❌ Không thể tự tặng sao cho mình');
+      btn.disabled = false; btn.textContent = 'Gửi ngay →';
+      return;
+    }
+    // INSERT trực tiếp
+    await api('POST', 'recognitions', {
+      from_user_id: currentUser.id,
+      to_user_id: toId,
+      stars: stars,
+      message: msg || `Cảm ơn bạn! +${stars}★`,
+      value_tag: 'teamwork'
+    });
+    // Cộng điểm người nhận
+    const recvProfile = await apiGet('profiles?id=eq.' + toId + '&select=total_stars,redeemable_points,reputation_points&limit=1');
+    if (recvProfile?.[0]) {
+      const p = recvProfile[0];
+      await api('PATCH', 'profiles?id=eq.' + toId, {
+        total_stars: (p.total_stars||0) + stars,
+        redeemable_points: (p.redeemable_points||0) + stars,
+        reputation_points: (p.reputation_points||0) + stars
+      });
+    }
+    data = { success: true };
+  } catch(e) { gErr = e; }
+
+  btn.disabled = false; btn.textContent = 'Gửi ngay →';
+
+  if (gErr || !data?.success) {
+    toast('❌ ' + (gErr?.message || 'Lỗi gửi sao'));
+    return;
+  }
+
+  closeModal();
+  document.getElementById('modal-msg').value = '';
+  toast('✦ Đã gửi sao thành công!');
+  await loadQuota();
+}
+
+// Like
+async function toggleLike(recId, btn) {
+  const arr = await apiGet('recognition_likes?recognition_id=eq.' + recId + '&user_id=eq.' + currentUser.id + '&select=id&limit=1').catch(() => []);
+  const existing = arr?.[0];
+  const m = btn.textContent.match(/(\d+)/);
+  const n = parseInt(m?.[0] || '0');
+  if (existing) {
+    await api('DELETE', 'recognition_likes?id=eq.' + existing.id);
+    await api('PATCH', 'recognitions?id=eq.' + recId, { like_count: n - 1 });
+    btn.textContent = `Thích · ${n - 1}`; btn.classList.remove('liked');
+  } else {
+    await api('POST', 'recognition_likes', { recognition_id: recId, user_id: currentUser.id });
+    await api('PATCH', 'recognitions?id=eq.' + recId, { like_count: n + 1 });
+    btn.textContent = `Thích · ${n + 1}`; btn.classList.add('liked');
+  }
+}
+
+// ═══════════════════════════════════════════════
+// TICKER
+// ═══════════════════════════════════════════════
+async function updateTicker() {
+  const { data } = await sb
+    .from('recognitions')
+    .select(`stars, from_profile:profiles!from_user_id(full_name), to_profile:profiles!to_user_id(full_name)`)
+    .order('created_at', { ascending: false })
+    .limit(8);
+  if (!data?.length) return;
+  const el = document.getElementById('ticker-text');
+  el.innerHTML = data.map(r =>
+    `<b>${(r.from_profile?.full_name||'?').toUpperCase()}</b> tặng ${'★'.repeat(r.stars)} cho <b>${(r.to_profile?.full_name||'?').toUpperCase()}</b> &nbsp;•&nbsp; `
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════
+function esc(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff/60000);
+  if (m < 1)  return 'Vừa xong';
+  if (m < 60) return `${m} phút trước`;
+  const h = Math.floor(m/60);
+  if (h < 24) return `${h} giờ trước`;
+  const d = Math.floor(h/24);
+  if (d < 7)  return `${d} ngày trước`;
+  return new Date(iso).toLocaleDateString('vi-VN');
+}
+
+function strToColor(str) {
+  if (!str) return '#9B9B9B';
+  const colors = ['#1A3A5C','#3A1A5C','#1A3A2A','#5C1A1A','#1A4A5C','#3A2A1A','#2A1A5C','#1A5C3A'];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function toast(msg) {
+  const t = document.getElementById('toastEl');
+  document.getElementById('tmsg').textContent = msg;
+  t.style.display = 'flex';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+function aTab(el) {
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ═══════════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════════
+let notifications = [];
+let notifChannel = null;
+
+function toggleNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  const isOpen = panel.style.display === 'block';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) {
+    // Mark all as read when opening
+    notifications.forEach(n => n.read = true);
+    saveNotifs();
+    updateNotifBadge();
+  }
+}
+
+// Close panel when clicking outside
+document.addEventListener('click', e => {
+  const btn   = document.getElementById('notif-btn');
+  const panel = document.getElementById('notif-panel');
+  if (panel && btn && !btn.contains(e.target) && !panel.contains(e.target)) {
+    panel.style.display = 'none';
+  }
+});
+
+function saveNotifs() {
+  try { localStorage.setItem('sw_notifs_' + currentUser?.id, JSON.stringify(notifications.slice(0,50))); } catch(e) {}
+}
+
+function loadNotifsFromStorage() {
+  try {
+    const stored = localStorage.getItem('sw_notifs_' + currentUser?.id);
+    if (stored) notifications = JSON.parse(stored);
+  } catch(e) { notifications = []; }
+}
+
+function addNotif(icon, title, sub, action) {
+  const n = { id: Date.now(), icon, title, sub, time: new Date().toISOString(), read: false, action };
+  notifications.unshift(n);
+  saveNotifs();
+  renderNotifs();
+  updateNotifBadge();
+  // Flash bell
+  const btn = document.getElementById('notif-btn');
+  if (btn) { btn.style.background = 'var(--gold-pale)'; setTimeout(() => btn.style.background = '#FFF', 1000); }
+}
+
+function updateNotifBadge() {
+  const unread = notifications.filter(n => !n.read).length;
+  const badge  = document.getElementById('notif-badge');
+  if (!badge) return;
+  if (unread > 0) {
+    badge.style.display = 'block';
+    badge.textContent   = unread > 9 ? '9+' : unread;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function renderNotifs() {
+  const el = document.getElementById('notif-list');
+  if (!el) return;
+  if (!notifications.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3)">Chưa có thông báo</div>';
+    return;
+  }
+  el.innerHTML = notifications.map(n => `
+    <div class="notif-item ${n.read ? '' : 'unread'}" onclick="clickNotif('${n.id}')">
+      <div class="notif-icon">${n.icon}</div>
+      <div class="notif-body">
+        <div class="notif-title">${esc(n.title)}</div>
+        <div class="notif-sub">${esc(n.sub)}</div>
+        <div class="notif-time">${timeAgo(n.time)}</div>
+      </div>
+    </div>`).join('');
+}
+
+function clickNotif(id) {
+  const n = notifications.find(x => String(x.id) === String(id));
+  if (n) { n.read = true; saveNotifs(); updateNotifBadge(); renderNotifs(); }
+  document.getElementById('notif-panel').style.display = 'none';
+  // Navigate to admin pending tab
+  go('admin');
+  setTimeout(() => {
+    const tab = document.querySelector('#page-admin .tab');
+    if (tab) adminTab('pending', tab);
+  }, 300);
+}
+
+function clearNotifs() {
+  notifications = [];
+  saveNotifs();
+  renderNotifs();
+  updateNotifBadge();
+}
+
+function setupNotifSubscription() {
+  if (!currentProfile || currentProfile.role !== 'admin') return;
+
+  // Show bell for admin
+  const btn = document.getElementById('notif-btn');
+  if (btn) btn.style.display = 'flex';
+
+  // Load stored notifications
+  loadNotifsFromStorage();
+  renderNotifs();
+  updateNotifBadge();
+
+  // Realtime: lắng nghe nhân viên đăng ký mới (is_approved = false)
+  notifChannel = sb.channel('admin-notifs')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'profiles',
+      filter: 'is_approved=eq.false'
+    }, payload => {
+      const p = payload.new;
+      addNotif(
+        '👤',
+        'Nhân viên mới đăng ký',
+        `${p.full_name} (${p.email}) · ${p.branch||''} · ${p.department||''} — chờ duyệt`,
+        'pending'
+      );
+      // Also show toast
+      toast(`👤 ${p.full_name} vừa đăng ký — cần duyệt!`);
+    })
+    .subscribe();
+
+  // Check pending count on load
+  checkPendingOnLoad();
+}
+
+async function checkPendingOnLoad() {
+  const { data } = await sb.from('profiles').select('id, full_name, email, branch, department, joined_at').eq('is_approved', false).order('joined_at', { ascending: false });
+  if (!data?.length) return;
+  // Add notification for each pending user not yet notified
+  const existingIds = notifications.map(n => n.sub?.split('(')[1]?.split(')')[0]);
+  data.forEach(p => {
+    if (!existingIds.includes(p.email)) {
+      const n = {
+        id: 'pending_' + p.id,
+        icon: '👤',
+        title: 'Nhân viên chờ duyệt',
+        sub: `${p.full_name} (${p.email}) · ${p.branch||''} · ${p.department||''}`,
+        time: p.joined_at,
+        read: false,
+        action: 'pending'
+      };
+      // Only add if not already there
+      if (!notifications.find(x => x.id === n.id)) {
+        notifications.push(n);
+      }
+    }
+  });
+  notifications.sort((a,b) => new Date(b.time) - new Date(a.time));
+  saveNotifs();
+  renderNotifs();
+  updateNotifBadge();
+}
+
+// ═══════════════════════════════════════════════
+// ADMIN TABS
+// ═══════════════════════════════════════════════
+function adminTab(name, el) {
+  const sections = ['pending','employees','depts','logo','admins','flags','fraud','history','rewards'];
+  sections.forEach(s => {
+    const el2 = document.getElementById('admin-section-' + s);
+    if (el2) el2.style.display = 'none';
+  });
+  const target = document.getElementById('admin-section-' + name);
+  if (target) target.style.display = 'block';
+  document.querySelectorAll('#page-admin .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  // Lazy load
+  if (name === 'employees') loadEmployeesList();
+  if (name === 'depts')     loadDepts();
+  if (name === 'admins')    loadAdminList();
+  if (name === 'flags')     loadFlags();
+  if (name === 'fraud')     loadFraudDashboard();
+  if (name === 'history')   loadHistory();
+  if (name === 'rewards')   loadRewardsAdmin();
+}
+
+// ═══════════════════════════════════════════════
+// EMPLOYEE MANAGEMENT
+// ═══════════════════════════════════════════════
+let allEmployees = [];
+
+async function loadEmployeesList() {
+  const { data } = await sb.from('profiles')
+    .select('*')
+    .eq('is_approved', true)
+    .order('full_name');
+  allEmployees = data || [];
+
+  // Populate branch filter
+  const bf = document.getElementById('emp-filter-branch');
+  if (bf) {
+    const { data: branches } = await sb.from('branches').select('name').order('name');
+    bf.innerHTML = '<option value="">Tất cả chi nhánh</option>' +
+      (branches||[]).map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+  }
+
+  renderEmployeesTable(allEmployees);
+}
+
+function filterEmployees() {
+  const q      = document.getElementById('emp-search')?.value.toLowerCase() || '';
+  const branch = document.getElementById('emp-filter-branch')?.value || '';
+  const filtered = allEmployees.filter(e =>
+    (!q || e.full_name.toLowerCase().includes(q) || e.email.toLowerCase().includes(q)) &&
+    (!branch || e.branch === branch)
+  );
+  renderEmployeesTable(filtered);
+}
+
+function renderEmployeesTable(list) {
+  const tbody = document.getElementById('employees-body');
+  if (!tbody) return;
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3)">Không tìm thấy nhân viên</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(e => `
+    <tr style="cursor:pointer" onclick="viewEmployee('${e.id}')">
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="av" style="width:28px;height:28px;font-size:10px;background:${strToColor(e.full_name)};color:#FFF;border:none;flex-shrink:0">${e.avatar_text||'?'}</div>
+          <strong>${esc(e.full_name)}</strong>
+        </div>
+      </td>
+      <td style="color:var(--text3);font-size:12px">${esc(e.email)}</td>
+      <td><span style="background:var(--bg2);padding:2px 8px;font-size:11px;font-weight:700;border:1px solid var(--border-soft)">${esc(e.branch||'—')}</span></td>
+      <td style="font-size:12px">${esc(e.department||'—')}</td>
+      <td style="font-weight:800;color:var(--gold)">${e.total_stars||0}★</td>
+      <td><span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;background:${e.role==='admin'?'var(--gold)':'var(--bg2)'};color:${e.role==='admin'?'#FFF':'var(--text2)'};border:1px solid ${e.role==='admin'?'var(--gold)':'var(--border-soft)'}">${e.role}</span></td>
+      <td onclick="event.stopPropagation()">
+        ${e.email !== 'loiphambb@gmail.com' ? `<button class="btn btn-red" style="padding:3px 8px;font-size:10px" onclick="deleteEmployee('${e.id}','${esc(e.full_name)}')">Xóa</button>` : ''}
+      </td>
+    </tr>`).join('');
+}
+
+async function viewEmployee(uid) {
+  const emp = allEmployees.find(e => e.id === uid);
+  if (!emp) return;
+
+  // Fill modal
+  document.getElementById('emp-av').textContent    = emp.avatar_text || '?';
+  document.getElementById('emp-av').style.background = strToColor(emp.full_name);
+  document.getElementById('emp-av').style.color    = '#FFF';
+  document.getElementById('emp-name').textContent  = emp.full_name;
+  document.getElementById('emp-meta').textContent  = `${emp.branch||'—'} · ${emp.department||'—'} · ${emp.role}`;
+  document.getElementById('emp-email').textContent = emp.email;
+  document.getElementById('emp-stars').textContent = (emp.total_stars||0) + '★';
+  document.getElementById('emp-posts').textContent = emp.post_count||0;
+  const delBtn = document.getElementById('emp-delete-btn');
+  if (emp.email === 'loiphambb@gmail.com') {
+    delBtn.style.display = 'none';
+  } else {
+    delBtn.style.display = '';
+    delBtn.setAttribute('onclick', `deleteEmployee('${uid}','${esc(emp.full_name)}')`);
+  }
+
+  // Get rank
+  const { data: lb } = await sb.rpc('get_leaderboard', { p_limit: 200 });
+  const rank = (lb||[]).findIndex(p => p.user_id === uid) + 1;
+  document.getElementById('emp-rank').textContent = rank ? '#' + rank : '#—';
+
+  // Stars this month
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
+  const { data: monthRecs } = await sb.from('recognitions')
+    .select('stars').eq('to_user_id', uid).gte('created_at', monthStart.toISOString());
+  const monthStars = (monthRecs||[]).reduce((s,r) => s + r.stars, 0);
+  document.getElementById('emp-month').textContent = monthStars + '★';
+
+  // Recent recognitions
+  const { data: recs } = await sb.from('recognitions')
+    .select('*, from_profile:profiles!from_user_id(full_name)')
+    .eq('to_user_id', uid).order('created_at', { ascending: false }).limit(3);
+  const recEl = document.getElementById('emp-recent');
+  if (!recs?.length) {
+    recEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Chưa có lời cảm ơn nào</div>';
+  } else {
+    recEl.innerHTML = recs.map(r => `
+      <div style="background:var(--bg2);border-left:3px solid var(--gold);padding:8px 11px;margin-bottom:6px;font-size:12px">
+        <div style="font-style:italic;margin-bottom:3px">"${esc(r.message)}"</div>
+        <div style="color:var(--text3);font-size:11px">— ${esc(r.from_profile?.full_name||'?')} · ${'★'.repeat(r.stars)}</div>
+      </div>`).join('');
+  }
+
+  document.getElementById('emp-modal').classList.add('open');
+}
+
+function closeEmpModal() {
+  document.getElementById('emp-modal').classList.remove('open');
+}
+
+async function deleteEmployee(uid, name) {
+  if (!confirm(`Xóa tài khoản "${name}"?\nHành động này không thể hoàn tác!`)) return;
+  // Chỉ bảo vệ super admin loiphambb@gmail.com
+  const target = allEmployees?.find(e => e.id === uid);
+  if (target?.email === 'loiphambb@gmail.com') {
+    toast('❌ Không thể xóa tài khoản Super Admin'); return;
+  }
+  const { data, error } = await sb.rpc('reject_user', { p_user_id: uid });
+  if (error) { toast('❌ Lỗi: ' + error.message); return; }
+  toast('🗑 Đã xóa tài khoản ' + name);
+  closeEmpModal();
+  loadEmployeesList();
+  loadAdmin();
+}
+
+// ── Split loadAdmin into separate lazy functions ──
+async function loadFlags() {
+  const { data: flagsRes } = await sb.from('gaming_flags').select('*').eq('is_resolved', false).order('created_at', { ascending: false });
+  const flagsEl = document.getElementById('flags-list');
+  if (!flagsEl) return;
+  if (!flagsRes?.length) {
+    flagsEl.innerHTML = '<div style="padding:16px;font-size:12px;color:var(--text3);text-align:center">✓ Không có cảnh báo nào</div>';
+  } else {
+    flagsEl.innerHTML = flagsRes.map(f => `
+      <div class="warn">
+        <div class="wi">⚠️</div>
+        <div class="wb">
+          <strong>${f.flag_type === 'circle' ? 'Vòng tròn tặng điểm' : 'Bất thường'}</strong>
+          ${f.details?.description || JSON.stringify(f.details)}
+          <div class="wa">
+            <button class="btn btn-outline" style="padding:4px 9px;font-size:10px" onclick="resolveFlag('${f.id}')">Đánh dấu đã xử lý</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+}
+
+async function loadHistory() {
+  const { data: hist } = await sb
+    .from('recognitions')
+    .select('*, from_profile:profiles!from_user_id(full_name), to_profile:profiles!to_user_id(full_name)')
+    .order('created_at', { ascending: false })
+    .limit(30);
+  const el = document.getElementById('history-body');
+  if (!el) return;
+  el.innerHTML = (hist||[]).map(r => `
+    <tr>
+      <td style="color:var(--text3)">${timeAgo(r.created_at)}</td>
+      <td>${esc(r.from_profile?.full_name||'?')}</td>
+      <td>${esc(r.to_profile?.full_name||'?')}</td>
+      <td style="font-weight:800;color:var(--gold)">${'★'.repeat(r.stars)}</td>
+      <td>${r.value_tag}</td>
+    </tr>`).join('');
+}
+
+// ═══════════════════════════════════════════════
+// DEPARTMENTS
+// ═══════════════════════════════════════════════
+async function loadDepts() {
+  const { data } = await sb.from('departments').select('*').order('khoi').order('name');
+  const vp = (data||[]).filter(d => d.khoi === 'KHỐI VĂN PHÒNG');
+  const ch = (data||[]).filter(d => d.khoi === 'KHỐI CỬA HÀNG');
+  renderDeptList('depts-vanphong-list', vp);
+  renderDeptList('depts-cuahang-list', ch);
+}
+
+function renderDeptList(elId, list) {
+  const el = document.getElementById(elId);
+  if (!list.length) {
+    el.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--text3)">Chưa có phòng ban nào. Thêm ở trên!</div>';
+    return;
+  }
+  el.innerHTML = list.map(d => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border-soft);margin-bottom:5px;background:${d.is_active?'#FFF':'var(--bg2)'}">
+      <div style="flex:1;font-size:13px;font-weight:600;${d.is_active?'':'text-decoration:line-through;color:var(--text3)'}">${esc(d.name)}</div>
+      <span style="font-size:10px;font-weight:800;padding:2px 7px;background:${d.is_active?'#e8f5e9':'var(--bg2)'};color:${d.is_active?'#2e7d32':'var(--text3)'}">
+        ${d.is_active ? 'Hoạt động' : 'Ẩn'}
+      </span>
+      <button class="btn btn-outline" style="padding:3px 8px;font-size:10px" onclick="toggleDept('${d.id}',${d.is_active})">
+        ${d.is_active ? 'Ẩn' : 'Hiện'}
+      </button>
+      <button class="btn btn-red" style="padding:3px 8px;font-size:10px" onclick="deleteDept('${d.id}','${esc(d.name)}')">Xóa</button>
+    </div>`).join('');
+}
+
+async function addDept(khoi) {
+  const inputId = khoi === 'KHỐI VĂN PHÒNG' ? 'new-dept-vanphong' : 'new-dept-cuahang';
+  const name = document.getElementById(inputId).value.trim();
+  if (!name) { toast('Vui lòng nhập tên phòng ban'); return; }
+  const { error } = await sb.from('departments').insert({ name, khoi });
+  if (error) { toast('❌ ' + (error.message.includes('unique') ? 'Phòng ban đã tồn tại' : error.message)); return; }
+  document.getElementById(inputId).value = '';
+  toast('✅ Đã thêm phòng ban: ' + name);
+  loadDepts();
+}
+
+async function toggleDept(id, currentActive) {
+  await sb.from('departments').update({ is_active: !currentActive }).eq('id', id);
+  loadDepts();
+}
+
+async function deleteDept(id, name) {
+  if (!confirm(`Xóa phòng ban "${name}"?`)) return;
+  await sb.from('departments').delete().eq('id', id);
+  toast('🗑 Đã xóa phòng ban ' + name);
+  loadDepts();
+}
+
+// ═══════════════════════════════════════════════
+// BRANCHES
+// ═══════════════════════════════════════════════
+async function loadBranches() {
+  const { data } = await sb.from('branches').select('*').order('name');
+  const el = document.getElementById('branches-list');
+  if (!el) return;
+  if (!data?.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:10px 0">Chưa có chi nhánh nào</div>';
+    return;
+  }
+  el.innerHTML = data.map(b => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-soft)">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700">${esc(b.name)}</div>
+        ${b.address ? `<div style="font-size:11px;color:var(--text3)">${esc(b.address)}</div>` : ''}
+      </div>
+      <span style="font-size:11px;color:var(--text3);font-weight:600">${b.is_active ? '● Hoạt động' : '○ Tạm đóng'}</span>
+      <button class="btn btn-outline" style="padding:4px 9px;font-size:10px" onclick="toggleBranch('${b.id}',${b.is_active})">${b.is_active ? 'Tạm đóng' : 'Mở lại'}</button>
+      <button class="btn btn-red" style="padding:4px 9px;font-size:10px" onclick="deleteBranch('${b.id}','${esc(b.name)}')">Xóa</button>
+    </div>`).join('');
+}
+
+async function addBranch() {
+  const name = document.getElementById('new-branch-name').value.trim();
+  const addr = document.getElementById('new-branch-addr').value.trim();
+  if (!name) { toast('Vui lòng nhập tên chi nhánh'); return; }
+  const { error } = await sb.from('branches').insert({ name, address: addr });
+  if (error) { toast('❌ ' + (error.message.includes('unique') ? 'Chi nhánh đã tồn tại' : error.message)); return; }
+  document.getElementById('new-branch-name').value = '';
+  document.getElementById('new-branch-addr').value = '';
+  toast('✅ Đã thêm chi nhánh ' + name);
+  loadBranches();
+  loadBranchesForRegister();
+}
+
+async function toggleBranch(id, isActive) {
+  await sb.from('branches').update({ is_active: !isActive }).eq('id', id);
+  toast(isActive ? '○ Đã tạm đóng chi nhánh' : '● Đã mở lại chi nhánh');
+  loadBranches();
+}
+
+async function deleteBranch(id, name) {
+  if (!confirm('Xóa chi nhánh "' + name + '"?\nNhân viên thuộc chi nhánh này sẽ về "Hội sở".')) return;
+  await sb.from('profiles').update({ branch: 'Hội sở' }).eq('branch', name);
+  await sb.from('branches').delete().eq('id', id);
+  toast('🗑 Đã xóa chi nhánh ' + name);
+  loadBranches();
+}
+
+// ═══════════════════════════════════════════════
+// ADMIN: APPROVE / REJECT / PROMOTE / LOGO
+// ═══════════════════════════════════════════════
+async function sendApprovalEmail(email, name) {
+  // Thử qua Supabase RPC trước (tránh CORS)
+  try {
+    const { data, error } = await sb.rpc('send_approval_email', { p_email: email, p_name: name });
+    if (!error && data?.success) {
+      console.log('✅ Email gửi qua RPC OK');
+      return true;
+    }
+    console.warn('RPC email failed, trying direct...', error);
+  } catch(e) {
+    console.warn('RPC email exception:', e.message);
+  }
+  // Fallback: gọi Resend trực tiếp
+  return await sendApprovalEmailDirect(email, name);
+}
+
+async function sendApprovalEmailDirect(email, name) {
+  try {
+    const html = `<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#F7F5F2;font-family:'Helvetica Neue',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0"><tr><td align="center">
+<table width="520" cellpadding="0" cellspacing="0" style="background:#FFF;border:2px solid #0A0A0A">
+<tr><td style="background:#0A0A0A;padding:28px 36px;text-align:center">
+  <div style="color:#FFF;font-size:13px;font-weight:800;letter-spacing:.2em">THREE O'CLOCK</div>
+  <div style="color:#A8842C;font-size:11px;letter-spacing:.15em;margin-top:4px">STARWORK PLATFORM</div>
+</td></tr>
+<tr><td style="padding:36px">
+  <div style="font-size:22px;font-weight:800;margin-bottom:6px">Chào mừng, ${name}! 🎉</div>
+  <div style="width:40px;height:3px;background:#A8842C;margin-bottom:20px"></div>
+  <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 16px">Tài khoản <strong>StarWork</strong> của bạn tại <strong>THREE O'CLOCK</strong> đã được Admin duyệt!</p>
+  <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 24px">Từ bây giờ bạn có thể đăng nhập để ghi nhận và cảm ơn đồng đội.</p>
+  <div style="text-align:center;margin:24px 0">
+    <a href="https://threeoclock.vercel.app" style="background:#0A0A0A;color:#FFF;padding:14px 32px;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:.1em">ĐĂNG NHẬP NGAY →</a>
+  </div>
+  <div style="background:#F7F5F2;border-left:3px solid #A8842C;padding:14px 16px;margin-top:20px">
+    <div style="font-size:11px;font-weight:800;color:#A8842C;margin-bottom:4px">TÀI KHOẢN ĐĂNG NHẬP</div>
+    <div style="font-size:13px;font-weight:600">${email}</div>
+  </div>
+</td></tr>
+<tr><td style="background:#F7F5F2;border-top:1px solid #D8D0C4;padding:16px 36px;text-align:center">
+  <div style="font-size:11px;color:#9A9490">THREE O'CLOCK · StarWork · Email tự động, vui lòng không reply.</div>
+</td></tr>
+</table></td></tr></table></body></html>`;
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer re_TC5hv3hU_6r1tY1rYdf1AyUW12Fya79xA', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'StarWork <noreply@threeoclock.vn>', to: [email], subject: '🎉 Tài khoản StarWork của bạn đã được duyệt!', html })
+    });
+    const result = await res.json();
+    if (result.id) { console.log('✅ Email gửi trực tiếp OK:', result.id); return true; }
+    console.error('Resend error:', result);
+    return false;
+  } catch(e) {
+    console.error('Email direct error:', e.message);
+    return false;
+  }
+}
+
+
+async function approveUser(uid, name, email) {
+  const { data } = await sb.rpc('approve_user', { p_user_id: uid });
+  if (data?.error) { toast('❌ ' + data.error); return; }
+  // Gửi email thông báo
+  if (email) {
+    const sent = await sendApprovalEmail(email, name);
+    if (sent) {
+      toast('✅ Đã duyệt ' + name + ' · Email thông báo đã gửi!');
+    } else {
+      toast('✅ Đã duyệt ' + name + ' · (Lỗi gửi email)');
+    }
+  } else {
+    toast('✅ Đã duyệt tài khoản ' + name);
+  }
+  loadAdmin();
+}
+
+async function rejectUser(uid, name) {
+  if (!confirm('Xóa tài khoản ' + name + '?')) return;
+  try {
+    await api('DELETE', 'profiles?id=eq.' + uid);
+  } catch(e) { toast('❌ Lỗi: ' + e.message); return; }
+  toast('🗑 Đã từ chối ' + name);
+  loadAdmin();
+}
+
+async function promoteAdmin(uid, name) {
+  if (!confirm('Thăng ' + name + ' lên Admin?')) return;
+  try {
+    await api('PATCH', 'profiles?id=eq.' + uid, { role: 'admin', is_approved: true });
+    toast('★ Đã thăng ' + name + ' lên Admin!');
+    loadAdmin();
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+async function uploadLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { toast('❌ File quá lớn, tối đa 2MB'); return; }
+  toast('Đang upload logo...');
+  const ext  = file.name.split('.').pop();
+  const path = 'company-logo.' + ext;
+  const { error } = await sb.storage.from('logos').upload(path, file, { upsert: true });
+  if (error) { toast('❌ Upload lỗi: ' + error.message); return; }
+  const { data: url } = sb.storage.from('logos').getPublicUrl(path);
+  // Add cache-bust timestamp so browser loads fresh image
+  const publicUrl = url.publicUrl + '?t=' + Date.now();
+  // Save URL to settings
+  await sb.from('app_settings').upsert({ key: 'logo_url', value: publicUrl, updated_at: new Date().toISOString() });
+  // Update logo everywhere on page
+  applyLogo(publicUrl);
+  toast('✅ Đã cập nhật logo!');
+}
+
+
+
+async function loadAdminList() {
+  const { data } = await sb.from('profiles').select('id,full_name,email,avatar_text,department,role').eq('is_approved', true).order('role');
+  const el = document.getElementById('admin-list');
+  if (!el) return;
+  const admins = (data||[]).filter(p => p.role === 'admin');
+  el.innerHTML = admins.map(p => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-soft)">
+      <div class="av" style="background:${strToColor(p.full_name)};color:#FFF;border:none;flex-shrink:0">${p.avatar_text||'?'}</div>
+      <div><div style="font-size:13px;font-weight:700">${esc(p.full_name)}</div><div style="font-size:11px;color:var(--text3)">${esc(p.email)}</div></div>
+      <span style="margin-left:auto;background:var(--gold);color:#FFF;padding:2px 9px;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase">ADMIN</span>
+    </div>`).join('') || '<div style="font-size:12px;color:var(--text3);padding:10px 0">Chưa có admin khác</div>';
+}
+
+// Load logo on startup
+async function loadLogo() {
+  try {
+    const arr = await apiGet('app_settings?key=eq.logo_url&select=value&limit=1');
+    if (arr?.[0]?.value) applyLogo(arr[0].value);
+  } catch(e) {}
+}
+
+function applyLogo(url) {
+  if (!url) return;
+  // Update tất cả logo trên page (auth + sidebar)
+  const authLogo = document.getElementById('auth-logo-svg') || document.getElementById('auth-logo-img');
+  if (authLogo) {
+    if (authLogo.tagName === 'IMG') {
+      authLogo.src = url;
+    } else {
+      const img = document.createElement('img');
+      img.id = 'auth-logo-svg';
+      img.src = url;
+      img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
+      authLogo.replaceWith(img);
+    }
+  }
+  document.querySelectorAll('.brand-logo').forEach(el => {
+    if (el.tagName === 'IMG') {
+      el.src = url;
+    } else {
+      const img = document.createElement('img');
+      img.src = url;
+      img.className = 'brand-logo';
+      img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
+      el.replaceWith(img);
+    }
+  });
+  // Update preview in admin panel
+  const prev = document.getElementById('logo-preview');
+  if (prev) prev.innerHTML = `<img src="${url}" style="width:56px;height:56px;object-fit:contain">`;
+}
+
+// ═══════════════════════════════════════════════
+// FRAUD DETECTION DASHBOARD
+// ═══════════════════════════════════════════════
+const fraudTypeLabel = {
+  circle_pair:  '🔄 Vòng tròn 2 người',
+  circle_group: '↺ Vòng tròn nhóm',
+  flood_single: '💧 Tập trung 1 người',
+  rapid_fire:   '⚡ Tặng liên tục',
+  copy_paste:   '📋 Copy paste',
+  spike:        '📈 Tăng đột biến'
+};
+const fraudSeverityColor = { high:'var(--red)', medium:'var(--gold)', low:'var(--grey)' };
+
+async function loadFraudDashboard() {
+  const { data: frauds } = await sb.from('fraud_analysis')
+    .select('*').order('created_at', { ascending: false });
+
+  const all      = frauds || [];
+  const pending  = all.filter(f => !f.is_resolved);
+  const circles  = all.filter(f => f.flag_type.includes('circle'));
+  const starsAt  = pending.reduce((s,f) => s + (f.stars_at_risk||0), 0);
+
+  document.getElementById('fraud-total').textContent   = all.length;
+  document.getElementById('fraud-pending').textContent = pending.length;
+  document.getElementById('fraud-circles').textContent = circles.length;
+  document.getElementById('fraud-stars').textContent   = starsAt + '★';
+
+  // Fraud list
+  const el = document.getElementById('fraud-list');
+  if (!pending.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:var(--text3)">✅ Không có cảnh báo nào chưa xử lý</div>';
+  } else {
+    el.innerHTML = pending.map(f => `
+      <div style="border-left:3px solid ${fraudSeverityColor[f.severity]||'var(--grey)'};padding:12px 14px;margin-bottom:8px;background:var(--bg2)">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <span style="font-size:12px;font-weight:800">${fraudTypeLabel[f.flag_type]||f.flag_type}</span>
+          <span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;background:${fraudSeverityColor[f.severity]};color:#FFF">${f.severity}</span>
+          <span style="margin-left:auto;font-size:10px;color:var(--text3)">${timeAgo(f.created_at)}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${f.details?.description || '—'}</div>
+        ${f.stars_at_risk ? `<div style="font-size:11px;font-weight:700;color:var(--gold);margin-bottom:8px">Sao nguy cơ: ${f.stars_at_risk}★</div>` : ''}
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-outline" style="padding:4px 9px;font-size:10px" onclick="resolveFraud('${f.id}','ok')">✓ Bình thường</button>
+          <button class="btn btn-red" style="padding:4px 9px;font-size:10px" onclick="resolveFraud('${f.id}','penalize')">✗ Xác nhận gian lận</button>
+        </div>
+      </div>`).join('');
+  }
+
+  // Low trust users
+  const { data: lowTrust } = await sb.from('profiles')
+    .select('id,full_name,avatar_text,department,branch,trust_score,total_stars')
+    .lt('trust_score', 70).eq('is_active', true).order('trust_score');
+  const ltEl = document.getElementById('low-trust-list');
+  if (!lowTrust?.length) {
+    ltEl.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--text3)">✅ Tất cả nhân viên có Trust Score bình thường</div>';
+  } else {
+    ltEl.innerHTML = lowTrust.map(u => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-soft)">
+        <div class="av" style="background:${strToColor(u.full_name)};color:#FFF;border:none;flex-shrink:0">${u.avatar_text||'?'}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700">${esc(u.full_name)}</div>
+          <div style="font-size:11px;color:var(--text3)">${esc(u.branch||'')} · ${esc(u.department||'')}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:16px;font-weight:800;color:${u.trust_score<40?'var(--red)':'var(--gold)'}">${u.trust_score}/100</div>
+          <div style="font-size:10px;color:var(--text3)">Trust Score</div>
+        </div>
+      </div>`).join('');
+  }
+}
+
+async function resolveFraud(id, action) {
+  await sb.from('fraud_analysis').update({
+    is_resolved: true,
+    is_penalized: action === 'penalize',
+    resolved_by: currentUser.id,
+    resolved_at: new Date().toISOString()
+  }).eq('id', id);
+  toast(action === 'penalize' ? '⚠️ Đã đánh dấu gian lận' : '✅ Đã đánh dấu bình thường');
+  loadFraudDashboard();
+}
+
+async function runFraudAnalysis() {
+  toast('🔍 Đang quét vòng tròn...');
+  const { data } = await sb.rpc('analyze_group_circles');
+  toast(`✅ Quét xong! Tìm thấy ${data?.circles_found || 0} vòng tròn`);
+  loadFraudDashboard();
+}
+
+async function runSpikeAnalysis() {
+  toast('📈 Đang quét tăng đột biến...');
+  const { data } = await sb.rpc('analyze_star_spikes');
+  toast(`✅ Quét xong! Tìm thấy ${data?.spikes_found || 0} trường hợp`);
+  loadFraudDashboard();
+}
+
+async function updateTrustScores() {
+  toast('★ Đang cập nhật Trust Score...');
+  await sb.rpc('update_trust_scores');
+  toast('✅ Đã cập nhật Trust Score tất cả nhân viên!');
+  loadFraudDashboard();
+}
+
+// ═══════════════════════════════════════════════
+// CHANGE PASSWORD
+// ═══════════════════════════════════════════════
+async function changePassword() {
+  const np  = document.getElementById('new-pass').value;
+  const cp  = document.getElementById('confirm-pass').value;
+  const err = document.getElementById('pass-err');
+  const btn = document.getElementById('btn-change-pass');
+  err.style.display = 'none';
+
+  if (!np) { err.textContent = 'Vui lòng nhập mật khẩu mới'; err.style.display='block'; return; }
+  if (np.length < 6) { err.textContent = 'Mật khẩu tối thiểu 6 ký tự'; err.style.display='block'; return; }
+  if (np !== cp) { err.textContent = 'Mật khẩu xác nhận không khớp'; err.style.display='block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Đang cập nhật...';
+  const timeout3 = setTimeout(() => {
+    btn.disabled = false; btn.textContent = 'Đổi mật khẩu →';
+    err.textContent = 'Kết nối chậm, vui lòng thử lại'; err.style.display='block';
+  }, 8000);
+  try {
+    const pwRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
+    method: 'PUT',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_token||SUPABASE_KEY), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: np })
+  });
+  const pwData = await pwRes.json();
+  const error = pwRes.ok ? null : { message: pwData.msg || pwData.message || 'Lỗi đổi mật khẩu' };
+    clearTimeout(timeout3);
+    btn.disabled = false; btn.textContent = 'Đổi mật khẩu →';
+    if (error) { err.textContent = error.message; err.style.display='block'; return; }
+    document.getElementById('new-pass').value = '';
+    document.getElementById('confirm-pass').value = '';
+    toast('✅ Đã đổi mật khẩu thành công!');
+  } catch(e) {
+    clearTimeout(timeout3);
+    btn.disabled = false; btn.textContent = 'Đổi mật khẩu →';
+    err.textContent = 'Lỗi kết nối, vui lòng thử lại'; err.style.display='block';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// LEVEL SYSTEM
+// ═══════════════════════════════════════════════
+const LEVELS = [
+  { name:'Bronze',  icon:'🥉', min:0,   max:49,   next:50  },
+  { name:'Silver',  icon:'🥈', min:50,  max:149,  next:150 },
+  { name:'Gold',    icon:'🥇', min:150, max:299,  next:300 },
+  { name:'Diamond', icon:'💎', min:300, max:599,  next:600 },
+  { name:'Legend',  icon:'👑', min:600, max:Infinity, next:null }
+];
+
+function getUserLevel(pts) {
+  return LEVELS.find(l => pts >= l.min && pts <= l.max) || LEVELS[0];
+}
+
+function renderLevelUI(pts) {
+  const lv = getUserLevel(pts);
+  document.getElementById('prof-level-icon').textContent = lv.icon;
+  document.getElementById('prof-level-name').textContent = lv.name.toUpperCase();
+  const pct = lv.next ? Math.min(100, Math.round((pts - lv.min) / (lv.next - lv.min) * 100)) : 100;
+  document.getElementById('prof-level-bar').style.width = pct + '%';
+  document.getElementById('prof-level-progress').textContent = lv.next ? `${pts} / ${lv.next}` : 'MAX LEVEL';
+}
+
+// ═══════════════════════════════════════════════
+// STORE — CỬA HÀNG ĐỔI QUÀ
+// ═══════════════════════════════════════════════
+let storeRewards = [];
+let storeCurrentFilter = 'all';
+
+async function loadStore() {
+  const bal = currentProfile?.redeemable_points ?? currentProfile?.total_stars ?? 0;
+  const rep = currentProfile?.reputation_points  ?? currentProfile?.total_stars ?? 0;
+  document.getElementById('store-balance').textContent   = bal + '★';
+  document.getElementById('store-reputation').textContent = rep + '★';
+
+  // Load rewards từ Supabase
+  const data = await apiGet('rewards?is_active=eq.true&order=points_required').catch(() => null);
+  if (!data?.length) {
+    // Fallback hardcoded nếu chưa chạy SQL patch
+    storeRewards = [
+      { id:'r1', name:'Voucher Free Trà Cam Xí Muội',    description:'1 ly Trà Cam Xí Muội miễn phí',          category:'drink_voucher', points_required:50,  expiry_days:7,    emoji:'🍊' },
+      { id:'r2', name:'Voucher Free Trà Quýt Quýt',      description:'1 ly Trà Quýt Quýt miễn phí',            category:'drink_voucher', points_required:50,  expiry_days:7,    emoji:'🍋' },
+      { id:'r3', name:'Voucher Free Latte',               description:'1 ly Latte miễn phí',                    category:'drink_voucher', points_required:50,  expiry_days:7,    emoji:'☕' },
+      { id:'r4', name:'Voucher Free Trà Sữa Oolong Nhài', description:'1 ly Trà Sữa Oolong Nhài miễn phí',     category:'drink_voucher', points_required:50,  expiry_days:7,    emoji:'🍵' },
+      { id:'r5', name:'Tặng phẩm Bình Giữ Nhiệt',        description:'Bình giữ nhiệt thương hiệu công ty',      category:'merchandise',   points_required:200, expiry_days:null, emoji:'🫗' },
+      { id:'r6', name:'Tặng phẩm Túi Tote',              description:'Túi tote thương hiệu công ty',            category:'merchandise',   points_required:200, expiry_days:null, emoji:'👜' },
+      { id:'r7', name:'Tặng phẩm Sổ Tay',                description:'Sổ tay thương hiệu công ty',              category:'merchandise',   points_required:200, expiry_days:null, emoji:'📓' },
+      { id:"r8", name:"Tặng phẩm Nón 3'",                description:"Nón thương hiệu Three O'Clock",           category:'merchandise',   points_required:200, expiry_days:null, emoji:'🧢' },
+      { id:'r9', name:'01 Free Day Off',                  description:'1 ngày nghỉ phép miễn phí (không trừ phép năm)', category:'privilege', points_required:350, expiry_days:30, emoji:'🏖' },
+    ];
+  } else {
+    const emojis = { drink_voucher:['🍊','🍋','☕','🍵','🧋','🥤'], merchandise:['🫗','👜','📓','🧢','🎁'], privilege:['🏖','🎯','⭐'] };
+    storeRewards = data.map((r, i) => ({
+      ...r,
+      emoji: emojis[r.category]?.[i % emojis[r.category].length] || '🎁'
+    }));
+  }
+
+  filterStore('all', true);
+  loadRedemptionHistory();
+}
+
+const CATEGORY_LABELS = { drink_voucher:'☕ Đồ Uống · 50★', merchandise:'🎁 Tặng Phẩm · 200★', privilege:'⭐ Quyền Lợi Lớn · 350★' };
+
+function filterStore(cat, skipTabUpdate) {
+  storeCurrentFilter = cat;
+  // Update tab styles
+  if (!skipTabUpdate) {
+    document.querySelectorAll('.stab').forEach(t => {
+      t.style.borderBottom = '2px solid transparent';
+      t.classList.remove('active');
+    });
+    const activeTab = document.getElementById('stab-' + (cat==='all'?'all':cat==='drink_voucher'?'drink':cat==='merchandise'?'merch':cat==='privilege'?'priv':'history'));
+    if (activeTab) { activeTab.style.borderBottom = '2.5px solid var(--black)'; activeTab.classList.add('active'); }
+  }
+
+  const isHistory = cat === 'history';
+  document.getElementById('store-view-main').style.display    = isHistory ? 'none' : 'block';
+  document.getElementById('store-view-history').style.display = isHistory ? 'block' : 'none';
+  if (!isHistory) renderStoreGrid(cat);
+}
+
+function renderStoreGrid(cat) {
+  const bal   = currentProfile?.redeemable_points ?? currentProfile?.total_stars ?? 0;
+  const items = cat === 'all' ? storeRewards : storeRewards.filter(r => r.category === cat);
+  const grid  = document.getElementById('store-grid');
+
+  if (!items.length) { grid.innerHTML = '<div class="empty-state" style="grid-column:span 3"><div class="empty-icon">◇</div><div class="empty-txt">Không có phần thưởng</div></div>'; return; }
+
+  // Group by category when showing all
+  let html = '';
+  if (cat === 'all') {
+    const groups = ['drink_voucher','merchandise','privilege'];
+    groups.forEach(g => {
+      const groupItems = items.filter(r => r.category === g);
+      if (!groupItems.length) return;
+      html += `<div style="grid-column:span 3;margin-top:6px;margin-bottom:2px">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding-bottom:8px;border-bottom:1px solid var(--border-soft)">${CATEGORY_LABELS[g]||g}</div>
+      </div>`;
+      html += groupItems.map(r => storeItemHTML(r, bal)).join('');
+    });
+  } else {
+    html = items.map(r => storeItemHTML(r, bal)).join('');
+  }
+  grid.innerHTML = html;
+}
+
+function storeItemHTML(r, bal) {
+  const canAfford = bal >= r.points_required;
+  const catLabel  = { drink_voucher:'Voucher đồ uống', merchandise:'Tặng phẩm', privilege:'Quyền lợi' }[r.category] || r.category;
+  const expiry    = r.expiry_days ? `Hạn dùng: ${r.expiry_days} ngày` : 'Không giới hạn hạn';
+  return `<div style="border:1.5px solid ${canAfford?'var(--black)':'var(--border-soft)'};display:flex;flex-direction:column;transition:.15s;${canAfford?'':'opacity:.65'}">
+    <div style="background:var(--bg2);padding:28px 16px;text-align:center;font-size:44px;border-bottom:1px solid var(--border-soft)">${r.emoji}</div>
+    <div style="padding:14px 16px 16px;flex:1;display:flex;flex-direction:column">
+      <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px">${catLabel}</div>
+      <div style="font-size:13px;font-weight:800;margin-bottom:5px;line-height:1.3">${esc(r.name)}</div>
+      <div style="font-size:12px;color:var(--text3);flex:1;line-height:1.5;margin-bottom:10px">${esc(r.description)}</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:10px">⏱ ${expiry}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto">
+        <div style="font-size:20px;font-weight:900;color:${canAfford?'var(--gold)':'var(--text3)'}">${r.points_required}★</div>
+        <button class="btn${canAfford?'':' btn-outline'}" style="font-size:11px;padding:7px 14px;${canAfford?'':'opacity:.6;cursor:not-allowed'}"
+          onclick="${canAfford ? 'confirmRedeem(\''+r.id+'\','+r.points_required+')' : ''}">
+          ${canAfford ? 'Đổi →' : 'Chưa đủ ★'}
+        </button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function confirmRedeem(rewardId, cost) {
+  const r = storeRewards.find(x => x.id === rewardId || x.id === String(rewardId));
+  const name = r ? r.name : 'phần thưởng này';
+  if (!confirm('Đổi "' + name + '" với giá ' + cost + '★?\n\nVoucher sẽ được tạo ngay sau khi xác nhận.')) return;
+  doRedeem(rewardId);
+}
+
+async function doRedeem(rewardId) {
+  toast('⏳ Đang xử lý...');
+  try {
+    const data = await apiRpc('redeem_reward', { p_reward_id: rewardId });
+    if (data?.error) { toast('❌ ' + data.error); return; }
+
+    // Thành công - hiện voucher code
+    const code     = data.voucher_code;
+    const validStr = data.valid_until ? `Hạn dùng: ${new Date(data.valid_until).toLocaleDateString('vi-VN')}` : 'Không có hạn';
+
+    // Reload profile để cập nhật điểm
+    await loadProfile();
+    // Cập nhật số dư trên store
+    const newBal = currentProfile?.redeemable_points ?? 0;
+    document.getElementById('store-balance').textContent = newBal + '★';
+
+    // Show voucher modal
+    showVoucherModal(code, validStr, data.points_spent);
+    loadRedemptionHistory();
+  } catch(e) {
+    if (e.code === 'PGRST202' || e.code === '42883') {
+      toast('⚠️ Cần chạy patch6_reward_system.sql trong Supabase trước!');
+    } else {
+      toast('❌ Lỗi: ' + (e.message || 'Vui lòng thử lại'));
+    }
+  }
+}
+
+function showVoucherModal(code, validStr, cost) {
+  // Tạo modal hiện voucher
+  const existing = document.getElementById('voucher-modal');
+  if (existing) existing.remove();
+
+  const m = document.createElement('div');
+  m.id = 'voucher-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999';
+  m.innerHTML = `<div style="background:#fff;border:2px solid #000;padding:32px;max-width:400px;width:90%;text-align:center">
+    <div style="font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--text3);margin-bottom:12px">✅ Đổi thành công!</div>
+    <div style="font-size:32px;font-weight:900;letter-spacing:.15em;border:2.5px dashed var(--black);padding:16px 24px;margin:16px 0;font-family:monospace">${code}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:6px">Trừ: <strong style="color:var(--gold)">${cost}★</strong></div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:20px">${validStr}</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:20px;line-height:1.6">Chụp màn hình hoặc ghi lại mã voucher.<br>Đưa mã này cho admin / cửa hàng để sử dụng.</div>
+    <button class="btn btn-black" onclick="document.getElementById('voucher-modal').remove()" style="width:100%">Đã hiểu →</button>
+  </div>`;
+  document.body.appendChild(m);
+}
+
+async function loadRedemptionHistory() {
+  const el = document.getElementById('redemption-history-list');
+  if (!el) return;
+
+  const data = await apiGet('redemptions?user_id=eq.' + currentUser.id + '&select=*,reward:rewards(name,category)&order=created_at.desc&limit=20').catch(() => null);
+  if (!data?.length) {
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)"><div style="font-size:32px;margin-bottom:10px">📋</div><div>Chưa có lịch sử đổi quà</div></div>';
+    return;
+  }
+
+  const statusStyle = {
+    valid:     { color:'#1a7a1a', bg:'rgba(26,122,26,.08)', label:'✓ VALID' },
+    used:      { color:'var(--text3)', bg:'var(--bg2)', label:'✓ ĐÃ DÙNG' },
+    expired:   { color:'var(--red)', bg:'rgba(139,26,26,.06)', label:'⏱ HẾT HẠN' },
+    cancelled: { color:'var(--text3)', bg:'var(--bg2)', label:'✗ ĐÃ HUỶ' }
+  };
+
+  el.innerHTML = data.map(r => {
+    const s = statusStyle[r.status] || statusStyle.valid;
+    const created = new Date(r.created_at).toLocaleDateString('vi-VN');
+    const validUntil = r.valid_until ? new Date(r.valid_until).toLocaleDateString('vi-VN') : '—';
+    const usedAt = r.used_at ? new Date(r.used_at).toLocaleDateString('vi-VN') : null;
+    return `<div style="border:1.5px solid var(--border-soft);margin-bottom:10px;padding:16px">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:800;margin-bottom:3px">${esc(r.reward?.name || 'Phần thưởng')}</div>
+          <div style="font-size:11px;color:var(--text3)">Đổi ngày: ${created} · Hạn: ${validUntil}${usedAt?' · Dùng ngày: '+usedAt:''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:13px;font-weight:800;color:var(--gold)">-${r.points_spent}★</div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.06em;margin-top:4px;padding:2px 8px;background:${s.bg};color:${s.color}">${s.label}</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;padding:8px 12px;background:var(--bg2);font-family:monospace;font-size:14px;font-weight:800;letter-spacing:.12em;display:flex;align-items:center;justify-content:space-between">
+        <span>${r.voucher_code}</span>
+        <button onclick="navigator.clipboard.writeText('${r.voucher_code}').then(()=>toast('✅ Đã copy!'))" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--text3);font-weight:700">COPY</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════
+// AI BÁO CÁO
+// ═══════════════════════════════════════════════
+async function loadAIReport() {
+  const weekAgo = new Date(Date.now() - 7*24*60*60*1000).toISOString();
+  const [{ count }, { data: stars }, { data: active }, { data: top }, { data: deptRecs }] = await Promise.all([
+    sb.from('recognitions').select('*',{count:'exact',head:true}).gte('created_at',weekAgo),
+    sb.from('recognitions').select('stars').gte('created_at',weekAgo),
+    sb.from('profiles').select('id',{count:'exact',head:true}).eq('is_active',true),
+    sb.rpc('get_leaderboard',{p_limit:5}),
+    sb.from('recognitions').select('sender_id, profiles!recognitions_sender_id_fkey(department)').gte('created_at',weekAgo),
+  ]);
+  const totalStars = (stars||[]).reduce((s,r)=>s+(r.stars||0),0);
+  const activeCount = active || 0;
+  document.getElementById('ai-stat-recogs').textContent = count || 0;
+  document.getElementById('ai-stat-stars').textContent  = totalStars;
+  document.getElementById('ai-stat-active').textContent = activeCount;
+  document.getElementById('ai-stat-mood').textContent   = activeCount > 0 ? Math.min(100,Math.round((count||0)/activeCount*10))+'%' : '-';
+
+  document.getElementById('ai-top-receivers').innerHTML = (top||[]).map((u,i)=>
+    `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-soft)">
+      <div style="font-size:12px;font-weight:800;width:18px;color:var(--text3)">${i+1}</div>
+      <div class="av" style="width:26px;height:26px;font-size:10px;background:${strToColor(u.full_name)};color:#fff;border:none">${(u.full_name||'?')[0]}</div>
+      <div style="flex:1;font-size:12px;font-weight:700">${esc(u.full_name)}</div>
+      <div style="font-size:12px;font-weight:800;color:var(--gold)">${u.total_stars}★</div>
+    </div>`
+  ).join('') || '<div style="color:var(--text3)">Chưa có dữ liệu</div>';
+
+  const deptMap = {};
+  (deptRecs||[]).forEach(r => { const d = r.profiles?.department||'Khác'; deptMap[d]=(deptMap[d]||0)+1; });
+  const dtotal = Object.values(deptMap).reduce((s,v)=>s+v,0)||1;
+  document.getElementById('ai-dept-breakdown').innerHTML = Object.entries(deptMap).sort((a,b)=>b[1]-a[1]).map(([dept,cnt])=>{
+    const pct=Math.round(cnt/dtotal*100);
+    return `<div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span style="font-weight:700">${esc(dept)}</span><span style="color:var(--text3)">${cnt} bài (${pct}%)</span></div>
+      <div style="height:5px;background:var(--bg2);border-radius:2px"><div style="height:100%;width:${pct}%;background:var(--black);border-radius:2px;transition:.4s"></div></div>
+    </div>`;
+  }).join('') || '<div style="color:var(--text3)">Chưa có dữ liệu</div>';
+}
+
+async function generateAIReport() {
+  const btn = document.getElementById('btn-gen-report');
+  const box = document.getElementById('ai-report-content');
+  btn.disabled=true; btn.textContent='◈ Đang phân tích...';
+  box.innerHTML='<div style="text-align:center;padding:30px"><div class="spinner"></div><div style="margin-top:10px;font-size:12px;color:var(--text3)">AI đang đọc dữ liệu văn hóa team...</div></div>';
+
+  const weekAgo = new Date(Date.now()-7*24*60*60*1000).toISOString();
+  const [{ data: recs }, { data: profiles }] = await Promise.all([
+    sb.from('recognitions').select('message,stars,sender:profiles!recognitions_sender_id_fkey(full_name,department),recipient:profiles!recognitions_recipient_id_fkey(full_name,department)').gte('created_at',weekAgo).limit(20),
+    sb.from('profiles').select('full_name,department,total_stars').eq('is_active',true),
+  ]);
+
+  const total = profiles?.length||0;
+  const weekStars = (recs||[]).reduce((s,r)=>s+(r.stars||0),0);
+  const sample = (recs||[]).slice(0,4).map(r=>`"${r.message}"`).join('; ');
+
+  const prompt = `Bạn là chuyên gia phân tích văn hóa doanh nghiệp cho công ty THREE O'CLOCK (ngành F&B/chuỗi cửa hàng đồ uống).
+
+Dữ liệu tuần này:
+- Tổng nhân viên: ${total}
+- Số bài ghi nhận: ${recs?.length||0}
+- Tổng ★ tặng nhau: ${weekStars}
+- Trung bình ★/người: ${total>0?(weekStars/total).toFixed(1):0}
+- Ví dụ tin nhắn: ${sample||'(chưa có)'}
+
+Hãy viết báo cáo phân tích văn hóa team NGẮN GỌN (250-350 chữ) bằng tiếng Việt:
+**1. Tóm tắt sức khoẻ văn hóa** — nhận xét tổng thể dựa vào số liệu
+**2. Điểm tích cực** — 2-3 điểm cụ thể
+**3. Cần cải thiện** — 1-2 điểm thực tế
+**4. Gợi ý hành động** — 1-2 việc cụ thể cho HR/manager tuần tới
+
+Tone: chuyên nghiệp, gần gũi, dựa vào số liệu thực. Không nói chung chung.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:800, messages:[{role:'user',content:prompt}] })
+    });
+    const aiData = await res.json();
+    let text = aiData.content?.[0]?.text || 'Không thể tạo báo cáo';
+    const html = text.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+    box.innerHTML = `<div style="line-height:1.85">${html}</div>
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border-soft);font-size:11px;color:var(--text3)">◈ Được tạo bởi Claude AI · ${new Date().toLocaleString('vi-VN')}</div>`;
+    loadAIReport();
+  } catch(e) {
+    box.innerHTML = '<div style="color:var(--red)">❌ Lỗi kết nối AI. Vui lòng thử lại.</div>';
+  }
+  btn.disabled=false; btn.textContent='◈ Tạo báo cáo mới';
+}
+
+
+// ═══════════════════════════════════════════════
+// REWARDS ADMIN
+// ═══════════════════════════════════════════════
+async function loadRewardsAdmin() {
+  await Promise.all([loadRewardsList(), loadRedemptionsList()]);
+}
+
+async function loadRewardsList() {
+  const el = document.getElementById('rewards-admin-list');
+  if (!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  const data = await apiGet('rewards?order=points_required&select=*').catch(() => []);
+
+  if (!data?.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chưa có phần thưởng nào. Thêm phần thưởng đầu tiên!</div>';
+    return;
+  }
+
+  const catLabel = { drink_voucher: '☕ Đồ uống', merchandise: '🎁 Tặng phẩm', privilege: '⭐ Quyền lợi' };
+
+  el.innerHTML = data.map(r => `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border-soft);${!r.is_active ? 'opacity:0.5' : ''}">
+      <div style="font-size:28px;min-width:40px;text-align:center">${r.emoji || '🎁'}</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px">${r.name}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">${r.description || ''}</div>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;background:var(--gold);color:#fff;padding:2px 8px">${r.points_required}★</span>
+          <span style="font-size:10px;background:var(--bg2);padding:2px 8px;border:1px solid var(--border-soft)">${catLabel[r.category] || r.category}</span>
+          ${r.expiry_days ? `<span style="font-size:10px;background:var(--bg2);padding:2px 8px;border:1px solid var(--border-soft)">⏳ ${r.expiry_days} ngày</span>` : ''}
+          <span style="font-size:10px;padding:2px 8px;border:1px solid var(--border-soft);color:${r.is_active ? 'green' : 'var(--red)'}">${r.is_active ? '● Đang bán' : '○ Ẩn'}</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:80px">
+        <button class="btn" style="font-size:11px;padding:5px 10px" onclick="editReward('${r.id}','${r.name.replace(/'/g,"\'")}','${r.description?.replace(/'/g,"\'")||''}','${r.category}',${r.points_required},${r.expiry_days||''},${r.is_active},'${r.emoji||'🎁'}')">✏️ Sửa</button>
+        <button class="btn" style="font-size:11px;padding:5px 10px;background:${r.is_active?'#fee':'#efe'}" onclick="toggleReward('${r.id}',${r.is_active})">${r.is_active ? '🚫 Ẩn' : '✅ Hiện'}</button>
+        <button class="btn" style="font-size:11px;padding:5px 10px;background:#fee;color:var(--red)" onclick="deleteReward('${r.id}','${r.name.replace(/'/g,"\'")}')">🗑️ Xoá</button>
+      </div>
+    </div>`).join('');
+}
+
+async function addReward() {
+  const name   = document.getElementById('rw-name').value.trim();
+  const desc   = document.getElementById('rw-desc').value.trim();
+  const cat    = document.getElementById('rw-cat').value;
+  const points = parseInt(document.getElementById('rw-points').value);
+  const expiry = parseInt(document.getElementById('rw-expiry').value) || null;
+  const emoji  = document.getElementById('rw-emoji').value.trim() || '🎁';
+
+  if (!name)          { toast('Vui lòng nhập tên phần thưởng'); return; }
+  if (!points || points < 1) { toast('Vui lòng nhập số điểm hợp lệ'); return; }
+
+  try {
+    await api('POST', 'rewards', { name, description: desc, category: cat, points_required: points, expiry_days: expiry, emoji, is_active: true });
+    toast('✅ Đã thêm phần thưởng: ' + name);
+    // Reset form
+    ['rw-name','rw-desc','rw-points','rw-expiry'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('rw-emoji').value = '🎁';
+    await loadRewardsList();
+    await loadStore(); // refresh store cho user
+  } catch(e) {
+    toast('❌ Lỗi: ' + e.message);
+  }
+}
+
+function editReward(id, name, desc, cat, points, expiry, isActive, emoji) {
+  // Điền lại form để sửa
+  document.getElementById('rw-name').value   = name;
+  document.getElementById('rw-desc').value   = desc;
+  document.getElementById('rw-cat').value    = cat;
+  document.getElementById('rw-points').value = points;
+  document.getElementById('rw-expiry').value = expiry || '';
+  document.getElementById('rw-emoji').value  = emoji;
+
+  // Đổi nút thành "Cập nhật"
+  const btn = document.querySelector('[onclick="addReward()"]');
+  if (btn) {
+    btn.textContent = '💾 Cập nhật phần thưởng';
+    btn.onclick = async () => {
+      const updName   = document.getElementById('rw-name').value.trim();
+      const updDesc   = document.getElementById('rw-desc').value.trim();
+      const updCat    = document.getElementById('rw-cat').value;
+      const updPoints = parseInt(document.getElementById('rw-points').value);
+      const updExpiry = parseInt(document.getElementById('rw-expiry').value) || null;
+      const updEmoji  = document.getElementById('rw-emoji').value.trim() || '🎁';
+      if (!updName || !updPoints) { toast('Vui lòng nhập đầy đủ'); return; }
+      try {
+        await api('PATCH', 'rewards?id=eq.' + id, { name: updName, description: updDesc, category: updCat, points_required: updPoints, expiry_days: updExpiry, emoji: updEmoji });
+        toast('✅ Đã cập nhật: ' + updName);
+        ['rw-name','rw-desc','rw-points','rw-expiry'].forEach(id2 => document.getElementById(id2).value = '');
+        document.getElementById('rw-emoji').value = '🎁';
+        btn.textContent = '+ Thêm phần thưởng';
+        btn.onclick = addReward;
+        await loadRewardsList();
+        await loadStore();
+      } catch(e) { toast('❌ ' + e.message); }
+    };
+  }
+  // Scroll lên form
+  document.getElementById('rw-name').scrollIntoView({ behavior: 'smooth' });
+  toast('📝 Đang sửa: ' + name);
+}
+
+async function toggleReward(id, isActive) {
+  try {
+    await api('PATCH', 'rewards?id=eq.' + id, { is_active: !isActive });
+    toast(isActive ? '🚫 Đã ẩn phần thưởng' : '✅ Đã hiện phần thưởng');
+    await loadRewardsList();
+    await loadStore();
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+async function deleteReward(id, name) {
+  if (!confirm('Xoá phần thưởng "' + name + '"? Không thể hoàn tác.')) return;
+  try {
+    await api('DELETE', 'rewards?id=eq.' + id);
+    toast('🗑️ Đã xoá: ' + name);
+    await loadRewardsList();
+    await loadStore();
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+async function loadRedemptionsList() {
+  const el = document.getElementById('redemptions-admin-list');
+  if (!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  const data = await apiGet('redemptions?select=*,reward:rewards(name,category),user:profiles(full_name,department)&order=created_at.desc&limit=50').catch(() => []);
+
+  if (!data?.length) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3)">Chưa có lượt đổi quà nào</div>';
+    return;
+  }
+
+  const statusColor = { pending: '#f59e0b', fulfilled: 'green', cancelled: 'var(--red)' };
+  const statusLabel = { pending: '⏳ Chờ xử lý', fulfilled: '✅ Đã trao', cancelled: '❌ Đã huỷ' };
+
+  el.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="background:var(--bg2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">
+        <th style="padding:8px;text-align:left">Nhân viên</th>
+        <th style="padding:8px;text-align:left">Phần thưởng</th>
+        <th style="padding:8px;text-align:left">Mã voucher</th>
+        <th style="padding:8px;text-align:left">Thời gian</th>
+        <th style="padding:8px;text-align:center">Trạng thái</th>
+        <th style="padding:8px;text-align:center">Hành động</th>
+      </tr></thead>
+      <tbody>
+        ${data.map(r => `
+          <tr style="border-bottom:1px solid var(--border-soft)">
+            <td style="padding:8px">
+              <div style="font-weight:600">${r.user?.full_name || '?'}</div>
+              <div style="font-size:11px;color:var(--text3)">${r.user?.department || ''}</div>
+            </td>
+            <td style="padding:8px">${r.reward?.name || r.reward_id}</td>
+            <td style="padding:8px;font-family:monospace;font-size:12px;font-weight:700;color:var(--gold)">${r.voucher_code || '—'}</td>
+            <td style="padding:8px;font-size:11px;color:var(--text3)">${new Date(r.created_at).toLocaleDateString('vi-VN')}</td>
+            <td style="padding:8px;text-align:center">
+              <span style="font-size:11px;font-weight:700;color:${statusColor[r.status]||'var(--text2)'}">${statusLabel[r.status]||r.status}</span>
+            </td>
+            <td style="padding:8px;text-align:center">
+              ${r.status === 'pending' ? `
+                <button class="btn" style="font-size:11px;padding:4px 8px;background:#efe;margin-bottom:4px" onclick="fulfillRedemption('${r.id}')">✅ Đã trao</button>
+                <button class="btn" style="font-size:11px;padding:4px 8px;background:#fee;color:var(--red)" onclick="cancelRedemption('${r.id}',${r.points_spent})">❌ Huỷ</button>
+              ` : '—'}
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function fulfillRedemption(id) {
+  try {
+    await api('PATCH', 'redemptions?id=eq.' + id, { status: 'fulfilled' });
+    toast('✅ Đã đánh dấu trao quà');
+    await loadRedemptionsList();
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+async function cancelRedemption(id, pointsSpent) {
+  if (!confirm('Huỷ lượt đổi quà này và hoàn lại điểm cho nhân viên?')) return;
+  try {
+    await api('PATCH', 'redemptions?id=eq.' + id, { status: 'cancelled' });
+    // Hoàn điểm
+    await apiRpc('refund_redemption', { p_redemption_id: id });
+    toast('✅ Đã huỷ và hoàn điểm');
+    await loadRedemptionsList();
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+async function searchVoucher() {
+  const q = document.getElementById('voucher-search').value.trim().toLowerCase();
+  const el = document.getElementById('redemptions-admin-list');
+  if (!el) return;
+  const rows = el.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+// Enter key for login
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>
