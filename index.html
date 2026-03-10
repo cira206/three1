@@ -1142,8 +1142,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false,
-    flowType: 'pkce'
+    detectSessionInUrl: false
   }
 });
 
@@ -1178,6 +1177,7 @@ function applyLogoEarly(url) {
 
 let currentUser = null;
 let currentProfile = null;
+let currentSession = null;
 let realtimeChannel = null;
 
 // ═══════════════════════════════════════════════
@@ -1382,26 +1382,18 @@ sb.auth.onAuthStateChange(async (event, session) => {
   // INITIAL_SESSION: fired khi page load
   // Nếu có session → user đã đăng nhập trước đó (F5)
   // Nếu không → show login
-  if (event === 'INITIAL_SESSION') {
+  if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
     if (session?.user) {
-      console.log('[Auth] Restoring session for:', session.user.email);
+      console.log('[Auth]', event, '→ loadApp for', session.user.email);
       if (!appLoaded && !appLoading) {
         appLoaded = true;
         currentUser = session.user;
+        currentSession = session; // lưu session để lấy token
         await loadApp();
       }
-    } else {
-      console.log('[Auth] No session → show login');
+    } else if (event === 'INITIAL_SESSION') {
       document.getElementById('auth-screen').style.display = 'flex';
     }
-    return;
-  }
-
-  // SIGNED_IN: sau khi login
-  if (event === 'SIGNED_IN' && session?.user && !appLoaded && !appLoading) {
-    appLoaded = true;
-    currentUser = session.user;
-    await loadApp();
     return;
   }
 
@@ -1419,24 +1411,34 @@ async function loadApp() {
   if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Đăng nhập →'; }
 
   try {
-    console.log('🔵 Fetching profile...');
-    // SDK session đã ready từ INITIAL_SESSION event
-    const { data: profile, error: profileErr } = await sb
-      .from('profiles').select('*').eq('id', currentUser.id).single();
-    console.log('🔵 Profile:', profile?.full_name, profileErr?.message);
-    console.log('🔵 Profile result:', profile?.full_name, 'error:', profileErr?.message);
+    console.log('🔵 Fetching profile with REST...');
+    // Dùng REST API với token từ session - không qua SDK để tránh RLS block
+    const token = currentSession?.access_token;
+    console.log('🔵 Token available:', !!token);
+    
+    let profile = null;
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}&select=*&limit=1`,
+        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token || SUPABASE_KEY}` } }
+      );
+      const arr = await res.json();
+      console.log('🔵 Profile response:', JSON.stringify(arr).slice(0,100));
+      profile = Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
+    } catch(e) {
+      console.error('🔵 Profile fetch failed:', e.message);
+    }
+    
     currentProfile = profile;
-
-    if (profileErr || !profile) {
-      console.error('❌ Profile error:', profileErr?.message);
-      appLoaded = false;
+    
+    if (!profile) {
+      console.error('❌ Profile not found, NOT signing out - just show error');
       appLoading = false;
-      await sb.auth.signOut();
-      currentUser = null; currentProfile = null;
+      // KHÔNG signOut - chỉ báo lỗi, giữ session
       document.getElementById('auth-screen').style.display = 'flex';
       document.getElementById('app').classList.remove('visible');
       const eEl = document.getElementById('login-err');
-      if (eEl) { eEl.textContent = '⚠️ Lỗi tải tài khoản. Đăng nhập lại.'; eEl.style.display = 'block'; }
+      if (eEl) { eEl.textContent = '⚠️ Lỗi kết nối. Vui lòng tải lại trang (F5).'; eEl.style.display = 'block'; }
       return;
     }
     if (!profile.is_approved) {
