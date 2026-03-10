@@ -1898,14 +1898,14 @@ async function loadLeaderboard() {
   const [p1, p2, p3] = [data[0], data[1], data[2]];
   podium.innerHTML = `
     <div class="pi p2">${p2?`<div class="pav" style="background:${strToColor(p2.full_name)};color:#FFF;border:1.5px solid rgba(0,0,0,.1)">${p2.avatar_text||'?'}</div><div class="pnm">${esc(p2.full_name)}</div><div class="pdpt">${esc(p2.department)}</div><div class="psc">${p2.stars_this_month}★</div><div class="prk">🥈 Hạng 2</div>`:'<div style="color:var(--text3)">—</div>'}</div>
-    <div class="pi p1"><div style="font-size:18px;margin-bottom:4px;color:var(--gold)">★</div><div class="pav" style="background:${strToColor(p1.full_name)};color:#FFF;border:2px solid var(--gold)">${p1.avatar_text||'?'}</div><div class="pnm">${esc(p1.full_name)}</div><div class="pdpt">${esc(p1.department)}</div><div class="psc">${p1.stars_this_month}★</div><div class="prk">◆ Hạng 1</div></div>
+    <div class="pi p1"><div style="font-size:22px;margin-bottom:4px">👑</div><div class="pav" style="background:${strToColor(p1.full_name)};color:#FFF;border:2px solid var(--gold)">${p1.avatar_text||'?'}</div><div class="pnm">${esc(p1.full_name)}</div><div class="pdpt">${esc(p1.department)}</div><div class="psc">${p1.stars_this_month}★</div><div class="prk">👑 Hạng 1</div></div>
     <div class="pi p3">${p3?`<div class="pav" style="background:${strToColor(p3.full_name)};color:#FFF;border:1.5px solid rgba(0,0,0,.1)">${p3.avatar_text||'?'}</div><div class="pnm">${esc(p3.full_name)}</div><div class="pdpt">${esc(p3.department)}</div><div class="psc">${p3.stars_this_month}★</div><div class="prk">🥉 Hạng 3</div>`:'<div style="color:var(--text3)">—</div>'}</div>`;
 
   // Mobile podium cards
   const mobileP = document.getElementById('lb-podium-mobile');
   if (mobileP) {
     const cards = [
-      { p: p1, rank: 1, medal: '◆', cls: 'pm-1' },
+      { p: p1, rank: 1, medal: '👑', cls: 'pm-1' },
       { p: p2, rank: 2, medal: '🥈', cls: 'pm-2' },
       { p: p3, rank: 3, medal: '🥉', cls: 'pm-3' },
     ];
@@ -1921,7 +1921,7 @@ async function loadLeaderboard() {
   // Table
   document.getElementById('lb-body').innerHTML = data.map((p,i) => `
     <tr>
-      <td><strong style="color:${i===0?'var(--gold)':'var(--grey)'}">${i===0?'◆ ':''} ${i+1}</strong></td>
+      <td><strong style="color:${i===0?'var(--gold)':'var(--grey)'}">${i===0?'👑':i+1}</strong></td>
       <td><div style="display:flex;align-items:center;gap:9px"><div class="av" style="width:28px;height:28px;font-size:10px;background:${strToColor(p.full_name)};color:#FFF;border:none">${p.avatar_text||'?'}</div><strong>${esc(p.full_name)}</strong></div></td>
       <td><span style="background:var(--bg2);padding:2px 8px;font-size:11px;font-weight:700;border:1px solid var(--border-soft)">${esc(p.department)}</span></td>
       <td style="font-weight:800;color:var(--gold)">${p.stars_this_month}</td>
