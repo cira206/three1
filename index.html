@@ -2024,10 +2024,13 @@ async function submitPost() {
   let data = null, error = null;
   try {
     if (toId === currentUser.id) throw new Error('Không thể tự tặng sao cho mình');
-    // Kiểm tra quota
-    const quotaRes = await apiGet('recognitions?from_user_id=eq.' + currentUser.id + '&select=stars&created_at=gte.' + new Date().toISOString().slice(0,10));
-    const usedToday = Array.isArray(quotaRes) ? quotaRes.reduce((s,r) => s + (r.stars||0), 0) : 0;
-    if (usedToday + stars > 5) throw new Error('Không đủ quota. Còn lại: ' + (5 - usedToday) + '★ hôm nay');
+    // Superadmin bypass quota
+    const isSuperAdmin = currentUser.email === 'loiphambb@gmail.com';
+    if (!isSuperAdmin) {
+      const quotaRes = await apiGet('recognitions?from_user_id=eq.' + currentUser.id + '&select=stars&created_at=gte.' + new Date().toISOString().slice(0,10));
+      const usedToday = Array.isArray(quotaRes) ? quotaRes.reduce((s,r) => s + (r.stars||0), 0) : 0;
+      if (usedToday + stars > 5) throw new Error('Không đủ quota. Còn lại: ' + (5 - usedToday) + '★ hôm nay');
+    }
     // INSERT recognition
     await api('POST', 'recognitions', {
       from_user_id: currentUser.id,
@@ -2077,13 +2080,16 @@ async function sendGift() {
 
   let data = null, gErr = null;
   try {
-    // Kiểm tra quota
-    const quotaRes = await apiGet('recognitions?from_user_id=eq.' + currentUser.id + '&select=stars&created_at=gte.' + new Date().toISOString().slice(0,10));
-    const usedToday = Array.isArray(quotaRes) ? quotaRes.reduce((s,r) => s + (r.stars||0), 0) : 0;
-    if (usedToday + stars > 5) {
-      toast('❌ Không đủ quota. Còn lại: ' + (5 - usedToday) + '★ hôm nay');
-      btn.disabled = false; btn.textContent = 'Gửi ngay →';
-      return;
+    // Superadmin bypass quota
+    const isSuperAdmin = currentUser.email === 'loiphambb@gmail.com';
+    if (!isSuperAdmin) {
+      const quotaRes = await apiGet('recognitions?from_user_id=eq.' + currentUser.id + '&select=stars&created_at=gte.' + new Date().toISOString().slice(0,10));
+      const usedToday = Array.isArray(quotaRes) ? quotaRes.reduce((s,r) => s + (r.stars||0), 0) : 0;
+      if (usedToday + stars > 5) {
+        toast('❌ Không đủ quota. Còn lại: ' + (5 - usedToday) + '★ hôm nay');
+        btn.disabled = false; btn.textContent = 'Gửi ngay →';
+        return;
+      }
     }
     if (toId === currentUser.id) {
       toast('❌ Không thể tự tặng sao cho mình');
@@ -2091,7 +2097,7 @@ async function sendGift() {
       return;
     }
     // INSERT trực tiếp
-    const inserted = await api('POST', 'recognitions', {
+    await api('POST', 'recognitions', {
       from_user_id: currentUser.id,
       to_user_id: toId,
       stars: stars,
@@ -2735,18 +2741,20 @@ async function approveUser(uid, name, email) {
 
 async function rejectUser(uid, name) {
   if (!confirm('Xóa tài khoản ' + name + '?')) return;
-  const { data } = await sb.rpc('reject_user', { p_user_id: uid });
-  if (data?.error) { toast('❌ ' + data.error); return; }
+  try {
+    await api('DELETE', 'profiles?id=eq.' + uid);
+  } catch(e) { toast('❌ Lỗi: ' + e.message); return; }
   toast('🗑 Đã từ chối ' + name);
   loadAdmin();
 }
 
 async function promoteAdmin(uid, name) {
   if (!confirm('Thăng ' + name + ' lên Admin?')) return;
-  const { data } = await sb.rpc('promote_to_admin', { p_user_id: uid });
-  if (data?.error) { toast('❌ ' + data.error); return; }
-  toast('★ Đã thăng ' + name + ' lên Admin!');
-  loadAdmin();
+  try {
+    await api('PATCH', 'profiles?id=eq.' + uid, { role: 'admin', is_approved: true });
+    toast('★ Đã thăng ' + name + ' lên Admin!');
+    loadAdmin();
+  } catch(e) { toast('❌ ' + e.message); }
 }
 
 async function uploadLogo(input) {
