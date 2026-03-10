@@ -1364,28 +1364,16 @@ async function loadBranchesForRegister() {
 let appLoaded = false;
 let appLoading = false; // Guard chống gọi loadApp() đồng thời
 
-// ── INIT: Check session ngay khi load (cách đáng tin cậy nhất) ──
-(async () => {
-  console.log('🟡 Checking session...');
-  const { data: { session }, error: sessErr } = await sb.auth.getSession();
-  console.log('🟡 Session result:', session?.user?.email, 'error:', sessErr?.message);
-  if (session?.user) {
-    console.log('🟡 Session found → loadApp()');
-    appLoaded = true;
-    currentUser = session.user;
-    await loadApp();
-  } else {
-    console.log('🟡 No session → show login');
-    document.getElementById('auth-screen').style.display = 'flex';
-  }
-})();
-
-// ── onAuthStateChange: chỉ xử lý login/logout events ──
+// ── INIT: Dùng onAuthStateChange đúng chuẩn Supabase ──
+// INITIAL_SESSION = fired khi page load, có session (F5) hoặc không (lần đầu)
+// SIGNED_IN = fired khi login thành công
+// SIGNED_OUT = fired khi logout
 sb.auth.onAuthStateChange(async (event, session) => {
   console.log('[Auth]', event, session?.user?.email);
 
   if (event === 'SIGNED_OUT') {
     appLoaded = false;
+    appLoading = false;
     currentUser = null;
     currentProfile = null;
     document.getElementById('auth-screen').style.display = 'flex';
@@ -1393,7 +1381,26 @@ sb.auth.onAuthStateChange(async (event, session) => {
     return;
   }
 
-  if (event === 'SIGNED_IN' && session?.user && !appLoaded) {
+  // INITIAL_SESSION: fired khi page load
+  // Nếu có session → user đã đăng nhập trước đó (F5)
+  // Nếu không → show login
+  if (event === 'INITIAL_SESSION') {
+    if (session?.user) {
+      console.log('[Auth] Restoring session for:', session.user.email);
+      if (!appLoaded && !appLoading) {
+        appLoaded = true;
+        currentUser = session.user;
+        await loadApp();
+      }
+    } else {
+      console.log('[Auth] No session → show login');
+      document.getElementById('auth-screen').style.display = 'flex';
+    }
+    return;
+  }
+
+  // SIGNED_IN: sau khi login
+  if (event === 'SIGNED_IN' && session?.user && !appLoaded && !appLoading) {
     appLoaded = true;
     currentUser = session.user;
     await loadApp();
@@ -1414,75 +1421,24 @@ async function loadApp() {
   if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Đăng nhập →'; }
 
   try {
-    console.log('🔵 Fetching profile for:', currentUser.id);
-    // Lấy access token từ Supabase storage trực tiếp (không gọi getSession() để tránh loop)
-    let profile = null, profileErr = null;
-    try {
-      // Đọc token từ localStorage trực tiếp - không trigger thêm auth events
-      let token = SUPABASE_KEY; // fallback anon key
-      try {
-        // Thử nhiều key có thể có
-        const keys = ['sw-auth', 'sb-zkdothuvthxenonehnyj-auth-token', 'supabase.auth.token'];
-        for (const key of keys) {
-          const stored = localStorage.getItem(key);
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            const t = parsed?.access_token || parsed?.session?.access_token || parsed?.currentSession?.access_token;
-            if (t) { token = t; console.log('🔵 Token from key:', key); break; }
-          }
-        }
-      } catch(_) {}
-      
-      console.log('🔵 Using token:', token === SUPABASE_KEY ? 'anon' : 'user');
-      const res = await fetch(
-        SUPABASE_URL + '/rest/v1/profiles?id=eq.' + currentUser.id + '&select=*&limit=1',
-        { headers: {
-            'apikey': SUPABASE_KEY,
-            'Authorization': 'Bearer ' + token,
-            'Content-Type': 'application/json'
-        }}
-      );
-      const arr = await res.json();
-      console.log('🔵 Profile fetch response:', arr);
-      if (Array.isArray(arr) && arr.length > 0) profile = arr[0];
-      else if (Array.isArray(arr) && arr.length === 0) profileErr = { message: 'Profile not found', code: 'NOT_FOUND' };
-      else profileErr = { message: JSON.stringify(arr) };
-    } catch(fetchErr) {
-      console.error('🔵 Fetch error:', fetchErr.message);
-      profileErr = { message: fetchErr.message };
-    }
+    console.log('🔵 Fetching profile...');
+    // SDK session đã ready từ INITIAL_SESSION event
+    const { data: profile, error: profileErr } = await sb
+      .from('profiles').select('*').eq('id', currentUser.id).single();
+    console.log('🔵 Profile:', profile?.full_name, profileErr?.message);
     console.log('🔵 Profile result:', profile?.full_name, 'error:', profileErr?.message);
     currentProfile = profile;
 
-    if (profileErr) {
-      console.error('❌ PROFILE ERROR code:', profileErr.code, 'msg:', profileErr.message);
-      const isAuthError = profileErr.code === '401' || profileErr.message?.includes('JWT') || profileErr.message?.includes('invalid claim');
-      if (isAuthError) {
-        appLoaded = false;
-        await sb.auth.signOut();
-        currentUser = null; currentProfile = null;
-        document.getElementById('auth-screen').style.display = 'flex';
-        document.getElementById('app').classList.remove('visible');
-      }
-      const loginErrEl = document.getElementById('login-err');
-      if (loginErrEl) {
-        loginErrEl.textContent = '⚠️ Lỗi tải tài khoản: ' + profileErr.message;
-        loginErrEl.style.display = 'block';
-      }
-      return;
-    }
-    if (!profile) {
-      console.error('❌ PROFILE NULL');
+    if (profileErr || !profile) {
+      console.error('❌ Profile error:', profileErr?.message);
       appLoaded = false;
+      appLoading = false;
       await sb.auth.signOut();
       currentUser = null; currentProfile = null;
       document.getElementById('auth-screen').style.display = 'flex';
       document.getElementById('app').classList.remove('visible');
-      const loginErrEl2 = document.getElementById('login-err');
-      if (loginErrEl2) {
-        loginErrEl2.textContent = '⚠️ Không tìm thấy tài khoản. Liên hệ admin.';
-        loginErrEl2.style.display = 'block';
-      }
+      const eEl = document.getElementById('login-err');
+      if (eEl) { eEl.textContent = '⚠️ Lỗi tải tài khoản. Đăng nhập lại.'; eEl.style.display = 'block'; }
       return;
     }
     if (!profile.is_approved) {
