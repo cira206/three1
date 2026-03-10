@@ -1171,16 +1171,32 @@ async function loadApp() {
 
     // Check if approved
     if (profileErr) {
-      // Lỗi network/RLS khi đọc profile - không signOut, hiện lỗi
-      console.error('Profile load error:', profileErr);
+      console.error('❌ PROFILE ERROR:', JSON.stringify(profileErr));
+      // Không signOut - hiện lỗi cụ thể
       appLoaded = false;
-      const loginBtnErr = document.getElementById('btn-login');
-      if (loginBtnErr) { loginBtnErr.disabled = false; loginBtnErr.textContent = 'Đăng nhập →'; }
-      const loginErr = document.getElementById('login-err');
-      if (loginErr) { loginErr.textContent = 'Lỗi kết nối server: ' + (profileErr.message || profileErr.code || 'Unknown'); loginErr.style.display = 'block'; }
+      const loginErrEl = document.getElementById('login-err');
+      const loginBtnEl = document.getElementById('btn-login');
+      if (loginBtnEl) { loginBtnEl.disabled = false; loginBtnEl.textContent = 'Đăng nhập →'; }
+      if (loginErrEl) {
+        loginErrEl.textContent = '❌ Lỗi server: ' + (profileErr.message || profileErr.code || JSON.stringify(profileErr));
+        loginErrEl.style.display = 'block';
+      }
       return;
     }
-    if (!profile || !profile.is_approved) {
+    if (!profile) {
+      console.error('❌ PROFILE NULL - chưa có profile trong DB');
+      appLoaded = false;
+      const loginErrEl2 = document.getElementById('login-err');
+      const loginBtnEl2 = document.getElementById('btn-login');
+      if (loginBtnEl2) { loginBtnEl2.disabled = false; loginBtnEl2.textContent = 'Đăng nhập →'; }
+      if (loginErrEl2) {
+        loginErrEl2.textContent = '❌ Tài khoản chưa có profile. Liên hệ admin.';
+        loginErrEl2.style.display = 'block';
+      }
+      return;
+    }
+    if (!profile.is_approved) {
+      console.warn('⏳ Profile chưa được duyệt:', profile.id);
       await sb.auth.signOut();
       appLoaded = false;
       document.getElementById('auth-screen').style.display = 'flex';
@@ -1227,22 +1243,16 @@ async function loadApp() {
     updateTicker();
 
   } catch(e) {
-    // Lỗi nghiêm trọng — hiện thông báo lỗi cụ thể
-    console.error('loadApp critical error:', e);
+    console.error('❌ loadApp CRASH:', e.message, e.stack);
     appLoaded = false;
-    const loginBtn2 = document.getElementById('btn-login');
-    if (loginBtn2) { loginBtn2.disabled = false; loginBtn2.textContent = 'Đăng nhập →'; }
-    // Chỉ signOut nếu là auth error, không signOut nếu là JS/network error
-    if (e?.message?.includes('JWT') || e?.message?.includes('auth') || e?.message?.includes('session')) {
-      await sb.auth.signOut();
-      document.getElementById('auth-screen').style.display = 'flex';
-      document.getElementById('app').classList.remove('visible');
-    } else {
-      // Hiện app dù có lỗi nhỏ, chỉ log lỗi
-      document.getElementById('auth-screen').style.display = 'none';
-      document.getElementById('app').classList.add('visible');
-      console.warn('Non-critical loadApp error, continuing:', e.message);
+    const loginBtnCatch = document.getElementById('btn-login');
+    if (loginBtnCatch) { loginBtnCatch.disabled = false; loginBtnCatch.textContent = 'Đăng nhập →'; }
+    const loginErrCatch = document.getElementById('login-err');
+    if (loginErrCatch) {
+      loginErrCatch.textContent = '❌ Lỗi: ' + e.message;
+      loginErrCatch.style.display = 'block';
     }
+    // Không signOut tự động - giữ session để user thử lại
   }
 }
 
