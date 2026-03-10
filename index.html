@@ -1407,28 +1407,21 @@ async function loadApp() {
     currentProfile = profile;
 
     // Check if approved
-    if (profileErr) {
+    if (profileErr || !profile) {
       console.error('❌ PROFILE ERROR:', JSON.stringify(profileErr));
-      // Không signOut - hiện lỗi cụ thể
+      // Session có nhưng profile lỗi → clear session, cho login lại
       appLoaded = false;
+      await sb.auth.signOut();
+      currentUser = null;
+      currentProfile = null;
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('app').classList.remove('visible');
       const loginErrEl = document.getElementById('login-err');
-      const loginBtnEl = document.getElementById('btn-login');
-      if (loginBtnEl) { loginBtnEl.disabled = false; loginBtnEl.textContent = 'Đăng nhập →'; }
       if (loginErrEl) {
-        loginErrEl.textContent = '❌ Lỗi server: ' + (profileErr.message || profileErr.code || JSON.stringify(profileErr));
+        loginErrEl.textContent = profileErr
+          ? '⚠️ Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.'
+          : '⚠️ Không tìm thấy tài khoản. Liên hệ admin.';
         loginErrEl.style.display = 'block';
-      }
-      return;
-    }
-    if (!profile) {
-      console.error('❌ PROFILE NULL - chưa có profile trong DB');
-      appLoaded = false;
-      const loginErrEl2 = document.getElementById('login-err');
-      const loginBtnEl2 = document.getElementById('btn-login');
-      if (loginBtnEl2) { loginBtnEl2.disabled = false; loginBtnEl2.textContent = 'Đăng nhập →'; }
-      if (loginErrEl2) {
-        loginErrEl2.textContent = '❌ Tài khoản chưa có profile. Liên hệ admin.';
-        loginErrEl2.style.display = 'block';
       }
       return;
     }
@@ -1487,14 +1480,17 @@ async function loadApp() {
   } catch(e) {
     console.error('❌ loadApp CRASH:', e.message, e.stack);
     appLoaded = false;
-    const loginBtnCatch = document.getElementById('btn-login');
-    if (loginBtnCatch) { loginBtnCatch.disabled = false; loginBtnCatch.textContent = 'Đăng nhập →'; }
+    // Clear session để tránh bị kẹt
+    try { await sb.auth.signOut(); } catch(_) {}
+    currentUser = null;
+    currentProfile = null;
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('app').classList.remove('visible');
     const loginErrCatch = document.getElementById('login-err');
     if (loginErrCatch) {
-      loginErrCatch.textContent = '❌ Lỗi: ' + e.message;
+      loginErrCatch.textContent = '⚠️ Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
       loginErrCatch.style.display = 'block';
     }
-    // Không signOut tự động - giữ session để user thử lại
   }
 }
 
