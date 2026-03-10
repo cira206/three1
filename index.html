@@ -1929,8 +1929,9 @@ function selVal(el) {
 }
 function selStar(el) {
   const already = el.classList.contains('sel');
-  el.closest('div').querySelectorAll('.so').forEach(s => s.classList.remove('sel'));
-  if (!already) el.classList.add('sel'); // click lại để bỏ chọn
+  // parentElement là div flex chứa tất cả sao
+  el.parentElement.querySelectorAll('.so').forEach(s => s.classList.remove('sel'));
+  if (!already) el.classList.add('sel');
 }
 
 // Image compression
