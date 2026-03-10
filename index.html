@@ -1139,14 +1139,10 @@ textarea.inf { resize:none; min-height:74px; }
 const SUPABASE_URL = 'https://zkdothuvthxenonehnyj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZG90aHV2dGh4ZW5vbmVobnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTgxMTAsImV4cCI6MjA4ODUzNDExMH0.O4xPbe07-8d0VDUmpt1UukIsN-tEeLbdK9EHUYctSHs';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: false
-  }
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
 });
 
-// Load logo ngay khi trang mở — chờ DOM sẵn sàng
+// Load logo sớm
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
@@ -1156,20 +1152,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 function applyLogoEarly(url) {
   if (!url) return;
-  // Auth screen logo
   const authSvg = document.getElementById('auth-logo-svg');
   if (authSvg) {
     const img = document.createElement('img');
-    img.id = 'auth-logo-svg';
-    img.src = url;
+    img.id = 'auth-logo-svg'; img.src = url;
     img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
     authSvg.replaceWith(img);
   }
-  // Sidebar logo
   document.querySelectorAll('.brand-logo').forEach(el => {
     const img = document.createElement('img');
-    img.src = url;
-    img.className = 'brand-logo';
+    img.src = url; img.className = 'brand-logo';
     img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
     el.replaceWith(img);
   });
@@ -1189,65 +1181,42 @@ function switchTab(tab) {
   document.getElementById('register-form').style.display = tab==='register'?'block':'none';
   document.getElementById('pending-msg').style.display = 'none';
   document.querySelectorAll('.auth-tab').forEach(t => t.style.display = '');
-  // Reset branch field
   const bf = document.getElementById('branch-field');
   if (bf) bf.style.display = 'none';
-  const deptSel = document.getElementById('reg-dept');
-  if (deptSel) deptSel.value = 'Sale';
 }
 
-// ═══════════════════════════════════════════════
-// KHOI + DEPARTMENT DROPDOWN IN REGISTER FORM
-// ═══════════════════════════════════════════════
 async function onKhoiChange(sel) {
-  const khoi      = sel.value;
+  const khoi = sel.value;
   const deptField = document.getElementById('dept-field');
   const deptSel   = document.getElementById('reg-dept');
   const deptLabel = document.getElementById('dept-label');
-
-  if (!khoi) {
-    deptField.style.display = 'none';
-    return;
-  }
-
+  if (!khoi) { deptField.style.display = 'none'; return; }
   deptField.style.display = 'block';
   deptLabel.textContent = khoi === 'KHỐI VĂN PHÒNG' ? 'Phòng ban' : 'Vị trí / Cửa hàng';
   deptSel.innerHTML = '<option value="">Đang tải...</option>';
-
-  // Dùng fetch trực tiếp với anon key để bypass RLS khi chưa login
   try {
     const res = await fetch(
       SUPABASE_URL + '/rest/v1/departments?khoi=eq.' + encodeURIComponent(khoi) + '&is_active=eq.true&select=name&order=name',
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
     );
     const data = await res.json();
-    if (data && data.length > 0) {
-      deptSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
-        data.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
-    } else {
-      deptSel.innerHTML = '<option value="">-- Chưa có phòng ban nào --</option>';
-    }
+    deptSel.innerHTML = data?.length
+      ? '<option value="">-- Chọn phòng ban --</option>' + data.map(d => `<option value="${d.name}">${d.name}</option>`).join('')
+      : '<option value="">-- Chưa có phòng ban nào --</option>';
   } catch(e) {
-    console.error('Dept load error:', e);
-    deptSel.innerHTML = '<option value="">Lỗi tải dữ liệu, thử lại</option>';
+    deptSel.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
   }
 }
 
-// ═══════════════════════════════════════════════
-// BRANCH DROPDOWN IN REGISTER FORM
-// ═══════════════════════════════════════════════
 async function onDeptChange(sel) {
   const bf = document.getElementById('branch-field');
   if (sel.value === '__branch__') {
     bf.style.display = 'block';
-    // Always reload fresh from DB
     const { data } = await sb.from('branches').select('name').eq('is_active', true).order('name');
     const branchSel = document.getElementById('reg-branch');
-    if (data && data.length > 0) {
-      branchSel.innerHTML = data.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
-    } else {
-      branchSel.innerHTML = '<option value="Hội sở">Hội sở</option>';
-    }
+    branchSel.innerHTML = data?.length
+      ? data.map(b => `<option value="${b.name}">${b.name}</option>`).join('')
+      : '<option value="Hội sở">Hội sở</option>';
   } else {
     bf.style.display = 'none';
   }
@@ -1259,30 +1228,17 @@ async function doLogin() {
   const err   = document.getElementById('login-err');
   const btn   = document.getElementById('btn-login');
   err.style.display = 'none';
-
   if (!email || !pass) { showErr(err, 'Vui lòng nhập đầy đủ thông tin'); return; }
-
   btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
-
   try {
-    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-
+    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
     if (error) {
       btn.disabled = false; btn.textContent = 'Đăng nhập →';
-      if (error.message?.includes('Invalid login')) {
-        showErr(err, 'Email hoặc mật khẩu không đúng');
-      } else if (error.message?.includes('Email not confirmed')) {
-        showErr(err, 'Email chưa được xác nhận');
-      } else {
-        showErr(err, 'Đăng nhập thất bại: ' + error.message);
-      }
-      return;
+      if (error.message?.includes('Invalid login')) showErr(err, 'Email hoặc mật khẩu không đúng');
+      else if (error.message?.includes('Email not confirmed')) showErr(err, 'Email chưa được xác nhận');
+      else showErr(err, 'Đăng nhập thất bại: ' + error.message);
     }
-
-    if (data?.user) {
-      // SIGNED_IN event sẽ tự fire và gọi loadApp
-      // Không cần gọi loadApp() ở đây nữa
-    }
+    // Thành công → onAuthStateChange SIGNED_IN sẽ tự xử lý
   } catch(e) {
     btn.disabled = false; btn.textContent = 'Đăng nhập →';
     showErr(err, 'Lỗi kết nối, vui lòng thử lại');
@@ -1297,154 +1253,95 @@ async function doRegister() {
   const pass  = document.getElementById('reg-pass').value;
   const err   = document.getElementById('reg-err');
   const btn   = document.getElementById('btn-reg');
-
-  if (!name || !email || !pass) { showErr(err, 'Vui lòng nhập đầy đủ thông tin'); return; }
-  if (!khoi) { showErr(err, 'Vui lòng chọn khối'); return; }
-  if (!dept) { showErr(err, 'Vui lòng chọn phòng ban'); return; }
-  if (pass.length < 6) { showErr(err, 'Mật khẩu tối thiểu 6 ký tự'); return; }
-
+  if (!name||!email||!pass) { showErr(err,'Vui lòng nhập đầy đủ thông tin'); return; }
+  if (!khoi) { showErr(err,'Vui lòng chọn khối'); return; }
+  if (!dept) { showErr(err,'Vui lòng chọn phòng ban'); return; }
+  if (pass.length < 6) { showErr(err,'Mật khẩu tối thiểu 6 ký tự'); return; }
   btn.disabled = true; btn.textContent = 'Đang tạo tài khoản...';
-  const timeout2 = setTimeout(() => {
-    btn.disabled = false; btn.textContent = 'Đăng ký →';
-    showErr(err, 'Kết nối chậm, vui lòng thử lại');
-  }, 10000);
+  const t = setTimeout(() => { btn.disabled=false; btn.textContent='Đăng ký →'; showErr(err,'Kết nối chậm, thử lại'); }, 10000);
   try {
-    const { error } = await sb.auth.signUp({
-      email, password: pass,
-      options: { data: {
-        full_name: name,
-        department: dept,
-        khoi: khoi
-      } }
-    });
-    clearTimeout(timeout2);
-    btn.disabled = false; btn.textContent = 'Đăng ký →';
+    const { error } = await sb.auth.signUp({ email, password: pass, options: { data: { full_name: name, department: dept, khoi } } });
+    clearTimeout(t); btn.disabled=false; btn.textContent='Đăng ký →';
     if (error) { showErr(err, error.message); return; }
+    document.getElementById('register-form').style.display = 'none';
+    document.getElementById('pending-msg').style.display = 'block';
   } catch(e) {
-    clearTimeout(timeout2);
-    btn.disabled = false; btn.textContent = 'Đăng ký →';
-    showErr(err, 'Lỗi kết nối, vui lòng thử lại');
-    return;
+    clearTimeout(t); btn.disabled=false; btn.textContent='Đăng ký →';
+    showErr(err,'Lỗi kết nối, thử lại');
   }
-  document.getElementById('register-form').style.display = 'none';
-  document.getElementById('pending-msg').style.display = 'block';
 }
 
 async function doLogout() {
-  appLoaded = false;
   if (notifChannel) sb.removeChannel(notifChannel);
   if (realtimeChannel) sb.removeChannel(realtimeChannel);
   await sb.auth.signOut();
-  currentUser = null; currentProfile = null;
-  document.getElementById('app').classList.remove('visible');
-  document.getElementById('auth-screen').style.display = 'flex';
-  document.getElementById('login-form').style.display = 'block';
-  document.getElementById('register-form').style.display = 'none';
-  document.getElementById('pending-msg').style.display = 'none';
-  document.querySelectorAll('.auth-tab').forEach(t => t.style.display = '');
 }
 
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 
 // ═══════════════════════════════════════════════
-// INIT — check session on load
+// INIT
 // ═══════════════════════════════════════════════
-// Load branches into register dropdown
-async function loadBranchesForRegister() {
-  const { data } = await sb.from('branches').select('name').eq('is_active', true).order('name');
-  const sel = document.getElementById('reg-branch');
-  if (!sel) return;
-  sel.innerHTML = (data||[]).map(b => `<option value="${b.name}">${b.name}</option>`).join('');
-  if (!data?.length) sel.innerHTML = '<option value="Hội sở">Hội sở</option>';
-}
-// branches loaded on demand when user selects Chi nhánh
+let _started = false;
 
-let appLoaded = false;
-let appLoading = false; // Guard chống gọi loadApp() đồng thời
-
-// ── INIT: Dùng onAuthStateChange đúng chuẩn Supabase ──
-// INITIAL_SESSION = fired khi page load, có session (F5) hoặc không (lần đầu)
-// SIGNED_IN = fired khi login thành công
-// SIGNED_OUT = fired khi logout
 sb.auth.onAuthStateChange(async (event, session) => {
-  console.log('[Auth]', event, session?.user?.email);
+  console.log('[Auth]', event, session?.user?.email ?? 'no session');
 
   if (event === 'SIGNED_OUT') {
-    appLoaded = false;
-    appLoading = false;
-    currentUser = null;
-    currentProfile = null;
+    _started = false;
+    currentUser = null; currentProfile = null; currentSession = null;
     document.getElementById('auth-screen').style.display = 'flex';
     document.getElementById('app').classList.remove('visible');
+    document.getElementById('login-form').style.display = 'block';
+    document.getElementById('register-form').style.display = 'none';
+    document.getElementById('pending-msg').style.display = 'none';
+    document.querySelectorAll('.auth-tab').forEach(t => t.style.display = '');
     return;
   }
 
-  // INITIAL_SESSION: fired khi page load
-  // Nếu có session → user đã đăng nhập trước đó (F5)
-  // Nếu không → show login
-  if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
-    if (session?.user) {
-      console.log('[Auth]', event, '→ loadApp for', session.user.email);
-      if (!appLoaded && !appLoading) {
-        appLoaded = true;
-        currentUser = session.user;
-        currentSession = session; // lưu session để lấy token
-        await loadApp();
-      }
-    } else if (event === 'INITIAL_SESSION') {
-      document.getElementById('auth-screen').style.display = 'flex';
-    }
+  if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session?.user && !_started) {
+    _started = true;
+    currentUser = session.user;
+    currentSession = session;
+    await loadApp();
     return;
   }
 
-  if (event === 'TOKEN_REFRESHED' && session?.user) {
+  if (event === 'INITIAL_SESSION' && !session) {
+    document.getElementById('auth-screen').style.display = 'flex';
+    return;
+  }
+
+  if (event === 'TOKEN_REFRESHED' && session) {
+    currentSession = session;
     currentUser = session.user;
   }
 });
 
 async function loadApp() {
-  // Guard chống gọi đồng thời
-  if (appLoading) { console.log('⚠️ loadApp already running, skip'); return; }
-  appLoading = true;
-  console.log('🔵 loadApp() START, user:', currentUser?.email);
   const loginBtn = document.getElementById('btn-login');
   if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Đăng nhập →'; }
 
   try {
-    console.log('🔵 Fetching profile with REST...');
-    // Dùng REST API với token từ session - không qua SDK để tránh RLS block
-    const token = currentSession?.access_token;
-    console.log('🔵 Token available:', !!token);
-    
-    let profile = null;
-    try {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/profiles?id=eq.${currentUser.id}&select=*&limit=1`,
-        { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token || SUPABASE_KEY}` } }
-      );
-      const arr = await res.json();
-      console.log('🔵 Profile response:', JSON.stringify(arr).slice(0,100));
-      profile = Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
-    } catch(e) {
-      console.error('🔵 Profile fetch failed:', e.message);
-    }
-    
-    currentProfile = profile;
-    
+    // Dùng REST + token từ session để tránh SDK query bị treo
+    const token = currentSession?.access_token || SUPABASE_KEY;
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/profiles?id=eq.' + currentUser.id + '&select=*&limit=1',
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token } }
+    );
+    const arr = await res.json();
+    const profile = Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
+    console.log('[loadApp] profile:', profile?.full_name, '| approved:', profile?.is_approved);
+
     if (!profile) {
-      console.error('❌ Profile not found, NOT signing out - just show error');
-      appLoading = false;
-      // KHÔNG signOut - chỉ báo lỗi, giữ session
-      document.getElementById('auth-screen').style.display = 'flex';
-      document.getElementById('app').classList.remove('visible');
-      const eEl = document.getElementById('login-err');
-      if (eEl) { eEl.textContent = '⚠️ Lỗi kết nối. Vui lòng tải lại trang (F5).'; eEl.style.display = 'block'; }
+      _started = false;
+      await sb.auth.signOut();
       return;
     }
+
     if (!profile.is_approved) {
-      console.warn('⏳ Profile chưa được duyệt:', profile.id);
+      _started = false;
       await sb.auth.signOut();
-      appLoaded = false;
       document.getElementById('auth-screen').style.display = 'flex';
       document.getElementById('login-form').style.display = 'none';
       document.getElementById('register-form').style.display = 'none';
@@ -1453,17 +1350,14 @@ async function loadApp() {
       return;
     }
 
-    console.log('✅ Showing app, hiding auth-screen');
-    appLoading = false;
+    currentProfile = profile;
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').classList.add('visible');
 
-    // Update sidebar
     document.getElementById('sidebar-av').textContent    = profile.avatar_text || '?';
     document.getElementById('sidebar-name').textContent  = profile.full_name;
     document.getElementById('sidebar-dept').textContent  = profile.branch ? profile.branch + ' · ' + profile.department : profile.department;
     document.getElementById('sidebar-stars').textContent = (profile.total_stars || 0) + '★';
-    // Mobile topbar user info
     const topbarAv = document.getElementById('topbar-av');
     const topbarStars = document.getElementById('topbar-stars');
     if (topbarAv) topbarAv.textContent = profile.avatar_text || '?';
@@ -1474,47 +1368,31 @@ async function loadApp() {
       document.getElementById('admin-nav-item').style.display  = 'flex';
     }
 
-    // Load data — mỗi cái bọc try/catch riêng, lỗi 1 cái không làm vỡ cái khác
     loadLogo();
     await Promise.allSettled([
-      loadFeed().catch(e => console.warn('loadFeed error:', e)),
-      loadQuota().catch(e => console.warn('loadQuota error:', e)),
-      loadMiniLeaderboard().catch(e => console.warn('loadMiniLeaderboard error:', e)),
-      loadActiveChallenges().catch(e => console.warn('loadActiveChallenges error:', e)),
-      loadEmployees().catch(e => console.warn('loadEmployees error:', e)),
+      loadFeed().catch(e => console.warn('loadFeed:', e)),
+      loadQuota().catch(e => console.warn('loadQuota:', e)),
+      loadMiniLeaderboard().catch(e => console.warn('loadMiniLeaderboard:', e)),
+      loadActiveChallenges().catch(e => console.warn('loadActiveChallenges:', e)),
+      loadEmployees().catch(e => console.warn('loadEmployees:', e)),
     ]);
 
     setupNotifSubscription();
-
     realtimeChannel = sb.channel('recognitions-feed')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'recognitions' }, (payload) => {
-        prependPost(payload.new);
-        updateTicker();
-      })
-      .subscribe();
-
+        prependPost(payload.new); updateTicker();
+      }).subscribe();
     updateTicker();
 
   } catch(e) {
-    console.error('❌ loadApp CRASH:', e.message, e.stack);
-    appLoaded = false;
-    appLoading = false;
-    if (e.message === 'PROFILE_TIMEOUT') {
-      // Supabase bị treo → reload trang tự động
-      console.log('⏱ Profile timeout → reload page');
-      window.location.reload();
-      return;
-    }
+    console.error('[loadApp] crash:', e.message);
+    _started = false;
     document.getElementById('auth-screen').style.display = 'flex';
     document.getElementById('app').classList.remove('visible');
-    const loginErrCatch = document.getElementById('login-err');
-    if (loginErrCatch) {
-      loginErrCatch.textContent = '❌ Lỗi: ' + e.message;
-      loginErrCatch.style.display = 'block';
-    }
+    const eEl = document.getElementById('login-err');
+    if (eEl) { eEl.textContent = '⚠️ Lỗi tải trang. Nhấn F5 để thử lại.'; eEl.style.display = 'block'; }
   }
 }
-
 // ═══════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════
