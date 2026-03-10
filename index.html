@@ -237,8 +237,6 @@ textarea.inf { resize:none; min-height:74px; }
 .sok{color:#2D8F5A;font-weight:800;font-size:10px;letter-spacing:.06em;text-transform:uppercase;}
 .swn{color:var(--red);font-weight:800;font-size:10px;letter-spacing:.06em;text-transform:uppercase;}
 
-/* ── TABS ── */
-.tabs { display:flex; border-bottom:1.5px solid var(--black); margin-bottom:18px; }
 /* ── STORE TABS ── */
 .stab {
   font-family:var(--F);
@@ -256,6 +254,8 @@ textarea.inf { resize:none; min-height:74px; }
 }
 .stab:hover { color:var(--black); }
 .stab.active { color:var(--black); border-bottom:2.5px solid var(--black); }
+/* ── TABS ── */
+.tabs { display:flex; border-bottom:1.5px solid var(--black); margin-bottom:18px; }
 .tab { padding:8px 16px; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; color:var(--text3); border-bottom:2px solid transparent; margin-bottom:-1.5px; transition:.12s; }
 .tab:hover { color:var(--black); }
 .tab.active { color:var(--black); border-bottom-color:var(--black); }
@@ -396,7 +396,7 @@ textarea.inf { resize:none; min-height:74px; }
       <div class="ng" style="margin-top:10px">Personal</div>
       <div class="ni" onclick="go('profile')">○ &nbsp;Hồ sơ của tôi</div>
       <div class="ni" onclick="go('aireport')">◈ &nbsp;AI Báo cáo</div>
-      <div class="ng" style="margin-top:10px" id="admin-nav-group" style="display:none">Admin</div>
+      <div class="ng" style="margin-top:10px;display:none" id="admin-nav-group">Admin</div>
       <div class="ni" id="admin-nav-item" onclick="go('admin')" style="display:none">▪ &nbsp;Admin Panel</div>
     </div>
     <div class="sidebar-user">
@@ -938,7 +938,10 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
-    if (data?.value) applyLogoEarly(data.value);
+    if (data?.value) {
+      const url = data.value.split('?')[0] + '?t=' + Date.now();
+      applyLogoEarly(url);
+    }
   } catch(e) {}
 });
 
@@ -2337,72 +2340,64 @@ async function deleteBranch(id, name) {
 // ═══════════════════════════════════════════════
 async function sendApprovalEmail(email, name) {
   try {
-    // Gọi qua Supabase RPC để tránh CORS (request từ server, không từ browser)
+    // Gọi qua Supabase RPC để tránh CORS (request từ server Supabase, không từ browser)
     const { data, error } = await sb.rpc('send_approval_email', {
       p_email: email,
       p_name: name
     });
     if (error) {
-      console.error('❌ RPC email error:', error);
-      // Fallback: thử gọi trực tiếp
+      console.error('RPC email error:', error);
       return await sendApprovalEmailDirect(email, name);
     }
     if (data?.success) {
       console.log('✅ Email gửi thành công qua RPC');
       return true;
-    } else {
-      console.warn('⚠️ RPC email không thành công:', data);
-      return await sendApprovalEmailDirect(email, name);
     }
+    return await sendApprovalEmailDirect(email, name);
   } catch(e) {
-    console.error('❌ Email error:', e);
     return await sendApprovalEmailDirect(email, name);
   }
 }
 
-// Fallback: gọi Resend trực tiếp (có thể bị CORS trên một số browser)
 async function sendApprovalEmailDirect(email, name) {
   try {
     const emailHTML = `<!DOCTYPE html>
 <html lang="vi">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#F7F5F2;font-family:'Helvetica Neue',Arial,sans-serif">
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0">
     <tr><td align="center">
       <table width="520" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:2px solid #0A0A0A">
         <tr><td style="background:#0A0A0A;padding:28px 36px;text-align:center">
           <div style="color:#FFFFFF;font-size:13px;font-weight:800;letter-spacing:.2em;text-transform:uppercase">THREE O'CLOCK</div>
-          <div style="color:#A8842C;font-size:11px;font-weight:600;letter-spacing:.15em;margin-top:4px">STARWORK PLATFORM</div>
+          <div style="color:#A8842C;font-size:11px;letter-spacing:.15em;margin-top:4px">STARWORK PLATFORM</div>
         </td></tr>
         <tr><td style="padding:36px 36px 28px">
-          <div style="font-size:22px;font-weight:800;color:#0A0A0A;margin-bottom:6px">Chào mừng, ${name}! 🎉</div>
+          <div style="font-size:22px;font-weight:800;color:#0A0A0A;margin-bottom:6px">Ch&#224;o m&#7915;ng, ${name}! 🎉</div>
           <div style="width:40px;height:3px;background:#A8842C;margin-bottom:22px"></div>
           <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 18px">
-            Tài khoản <strong>StarWork</strong> của bạn tại <strong>THREE O'CLOCK</strong> đã được Admin duyệt thành công!
+            T&#224;i kho&#7843;n <strong>StarWork</strong> c&#7911;a b&#7841;n t&#7841;i <strong>THREE O'CLOCK</strong> &#273;&#227; &#273;&#432;&#7907;c Admin duy&#7879;t th&#224;nh c&#244;ng!
           </p>
           <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 28px">
-            Từ bây giờ bạn có thể đăng nhập để ghi nhận và cảm ơn đồng đội, theo dõi bảng xếp hạng, và tham gia vào văn hóa doanh nghiệp của chúng ta.
+            T&#7915; b&#226;y gi&#7901; b&#7841;n c&#243; th&#7875; &#273;&#259;ng nh&#7853;p &#273;&#7875; ghi nh&#7853;n v&#224; c&#7843;m &#417;n &#273;&#7891;ng &#273;&#7897;i.
           </p>
           <div style="text-align:center;margin:28px 0">
-            <a href="https://threeoclock.vercel.app" style="background:#0A0A0A;color:#FFFFFF;padding:14px 32px;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;display:inline-block">
-              Đăng nhập ngay &rarr;
-            </a>
+            <a href="https://threeoclock.vercel.app" style="background:#0A0A0A;color:#FFFFFF;padding:14px 32px;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;display:inline-block">&#272;&#259;ng nh&#7853;p ngay &rarr;</a>
           </div>
-          <div style="background:#F7F5F2;border-left:3px solid #A8842C;padding:14px 16px;margin-top:10px">
-            <div style="font-size:11px;font-weight:800;color:#A8842C;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">Tài khoản đăng nhập</div>
+          <div style="background:#F7F5F2;border-left:3px solid #A8842C;padding:14px 16px">
+            <div style="font-size:11px;font-weight:800;color:#A8842C;text-transform:uppercase;margin-bottom:5px">T&#224;i kho&#7843;n &#273;&#259;ng nh&#7853;p</div>
             <div style="font-size:13px;color:#0A0A0A;font-weight:600">${email}</div>
           </div>
         </td></tr>
-        <tr><td style="background:#F7F5F2;border-top:1.5px solid #D8D0C4;padding:18px 36px;text-align:center">
-          <div style="font-size:11px;color:#9A9490;letter-spacing:.08em">THREE O'CLOCK · StarWork Platform</div>
-          <div style="font-size:10px;color:#C0BDB9;margin-top:4px">Email này được gửi tự động, vui lòng không reply.</div>
+        <tr><td style="background:#F7F5F2;border-top:1px solid #D8D0C4;padding:18px 36px;text-align:center">
+          <div style="font-size:11px;color:#9A9490">THREE O'CLOCK &middot; StarWork Platform</div>
+          <div style="font-size:10px;color:#C0BDB9;margin-top:4px">Email n&#224;y &#273;&#432;&#7907;c g&#7917;i t&#7921; &#273;&#7897;ng, vui l&#242;ng kh&#244;ng reply.</div>
         </td></tr>
       </table>
     </td></tr>
   </table>
 </body>
 </html>`;
-
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -2417,15 +2412,11 @@ async function sendApprovalEmailDirect(email, name) {
       })
     });
     const result = await res.json();
-    if (result.id) {
-      console.log('✅ Email gửi thành công (direct):', result.id);
-      return true;
-    } else {
-      console.error('❌ Resend error:', result);
-      return false;
-    }
+    if (result.id) { return true; }
+    console.error('Resend error:', result);
+    return false;
   } catch(e) {
-    console.error('❌ Email direct error:', e);
+    console.error('Email direct error:', e);
     return false;
   }
 }
@@ -2502,7 +2493,11 @@ async function loadAdminList() {
 async function loadLogo() {
   try {
     const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
-    if (data?.value) applyLogo(data.value);
+    if (data?.value) {
+      // Thêm cache busting để tránh browser cache logo cũ
+      const url = data.value.split('?')[0] + '?t=' + Date.now();
+      applyLogo(url);
+    }
   } catch(e) { console.warn('loadLogo error:', e); }
 }
 
