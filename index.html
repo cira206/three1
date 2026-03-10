@@ -239,6 +239,23 @@ textarea.inf { resize:none; min-height:74px; }
 
 /* ── TABS ── */
 .tabs { display:flex; border-bottom:1.5px solid var(--black); margin-bottom:18px; }
+/* ── STORE TABS ── */
+.stab {
+  font-family:var(--F);
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  padding:9px 20px;
+  border:none;
+  border-bottom:2px solid transparent;
+  background:transparent;
+  cursor:pointer;
+  color:var(--text2);
+  transition:.12s;
+}
+.stab:hover { color:var(--black); }
+.stab.active { color:var(--black); border-bottom:2.5px solid var(--black); }
 .tab { padding:8px 16px; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; color:var(--text3); border-bottom:2px solid transparent; margin-bottom:-1.5px; transition:.12s; }
 .tab:hover { color:var(--black); }
 .tab.active { color:var(--black); border-bottom-color:var(--black); }
@@ -545,11 +562,11 @@ textarea.inf { resize:none; min-height:74px; }
 
       <!-- Tabs lọc danh mục -->
       <div style="display:flex;gap:0;border-bottom:1.5px solid var(--black);margin-bottom:20px">
-        <button id="stab-all"     class="stab active" onclick="filterStore('all')"          style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2.5px solid var(--black);background:transparent;cursor:pointer">TẤT CẢ</button>
-        <button id="stab-drink"   class="stab"        onclick="filterStore('drink_voucher')" style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer">☕ ĐỒ UỐNG</button>
-        <button id="stab-merch"   class="stab"        onclick="filterStore('merchandise')"  style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer">🎁 TẶNG PHẨM</button>
-        <button id="stab-priv"    class="stab"        onclick="filterStore('privilege')"    style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer">⭐ QUYỀN LỢI</button>
-        <button id="stab-history" class="stab"        onclick="filterStore('history')"      style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer;margin-left:auto">📋 LỊCH SỬ ĐỔI</button>
+        <button id="stab-all"     class="stab active" onclick="filterStore('all')">TẤT CẢ</button>
+        <button id="stab-drink"   class="stab"        onclick="filterStore('drink_voucher')">☕ ĐỒ UỐNG</button>
+        <button id="stab-merch"   class="stab"        onclick="filterStore('merchandise')">🎁 TẶNG PHẨM</button>
+        <button id="stab-priv"    class="stab"        onclick="filterStore('privilege')">⭐ QUYỀN LỢI</button>
+        <button id="stab-history" class="stab"        onclick="filterStore('history')" style="margin-left:auto">📋 LỊCH SỬ ĐỔI</button>
       </div>
 
       <!-- Store grid -->
@@ -2320,29 +2337,43 @@ async function deleteBranch(id, name) {
 // ═══════════════════════════════════════════════
 async function sendApprovalEmail(email, name) {
   try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer re_TC5hv3hU_6r1tY1rYdf1AyUW12Fya79xA',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: 'StarWork <noreply@threeoclock.vn>',
-        to: [email],
-        subject: '🎉 Tài khoản StarWork của bạn đã được duyệt!',
-        html: `<!DOCTYPE html>
+    // Gọi qua Supabase RPC để tránh CORS (request từ server, không từ browser)
+    const { data, error } = await sb.rpc('send_approval_email', {
+      p_email: email,
+      p_name: name
+    });
+    if (error) {
+      console.error('❌ RPC email error:', error);
+      // Fallback: thử gọi trực tiếp
+      return await sendApprovalEmailDirect(email, name);
+    }
+    if (data?.success) {
+      console.log('✅ Email gửi thành công qua RPC');
+      return true;
+    } else {
+      console.warn('⚠️ RPC email không thành công:', data);
+      return await sendApprovalEmailDirect(email, name);
+    }
+  } catch(e) {
+    console.error('❌ Email error:', e);
+    return await sendApprovalEmailDirect(email, name);
+  }
+}
+
+// Fallback: gọi Resend trực tiếp (có thể bị CORS trên một số browser)
+async function sendApprovalEmailDirect(email, name) {
+  try {
+    const emailHTML = `<!DOCTYPE html>
 <html lang="vi">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#F7F5F2;font-family:'Helvetica Neue',Arial,sans-serif">
   <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0">
     <tr><td align="center">
       <table width="520" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:2px solid #0A0A0A">
-        <!-- Header -->
         <tr><td style="background:#0A0A0A;padding:28px 36px;text-align:center">
           <div style="color:#FFFFFF;font-size:13px;font-weight:800;letter-spacing:.2em;text-transform:uppercase">THREE O'CLOCK</div>
           <div style="color:#A8842C;font-size:11px;font-weight:600;letter-spacing:.15em;margin-top:4px">STARWORK PLATFORM</div>
         </td></tr>
-        <!-- Body -->
         <tr><td style="padding:36px 36px 28px">
           <div style="font-size:22px;font-weight:800;color:#0A0A0A;margin-bottom:6px">Chào mừng, ${name}! 🎉</div>
           <div style="width:40px;height:3px;background:#A8842C;margin-bottom:22px"></div>
@@ -2354,7 +2385,7 @@ async function sendApprovalEmail(email, name) {
           </p>
           <div style="text-align:center;margin:28px 0">
             <a href="https://threeoclock.vercel.app" style="background:#0A0A0A;color:#FFFFFF;padding:14px 32px;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;display:inline-block">
-              Đăng nhập ngay →
+              Đăng nhập ngay &rarr;
             </a>
           </div>
           <div style="background:#F7F5F2;border-left:3px solid #A8842C;padding:14px 16px;margin-top:10px">
@@ -2362,7 +2393,6 @@ async function sendApprovalEmail(email, name) {
             <div style="font-size:13px;color:#0A0A0A;font-weight:600">${email}</div>
           </div>
         </td></tr>
-        <!-- Footer -->
         <tr><td style="background:#F7F5F2;border-top:1.5px solid #D8D0C4;padding:18px 36px;text-align:center">
           <div style="font-size:11px;color:#9A9490;letter-spacing:.08em">THREE O'CLOCK · StarWork Platform</div>
           <div style="font-size:10px;color:#C0BDB9;margin-top:4px">Email này được gửi tự động, vui lòng không reply.</div>
@@ -2371,22 +2401,35 @@ async function sendApprovalEmail(email, name) {
     </td></tr>
   </table>
 </body>
-</html>`
+</html>`;
+
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer re_TC5hv3hU_6r1tY1rYdf1AyUW12Fya79xA',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'StarWork <noreply@threeoclock.vn>',
+        to: [email],
+        subject: '🎉 Tài khoản StarWork của bạn đã được duyệt!',
+        html: emailHTML
       })
     });
     const result = await res.json();
     if (result.id) {
-      console.log('✅ Email gửi thành công:', result.id);
+      console.log('✅ Email gửi thành công (direct):', result.id);
       return true;
     } else {
       console.error('❌ Resend error:', result);
       return false;
     }
   } catch(e) {
-    console.error('❌ Email error:', e);
+    console.error('❌ Email direct error:', e);
     return false;
   }
 }
+
 
 async function approveUser(uid, name, email) {
   const { data } = await sb.rpc('approve_user', { p_user_id: uid });
