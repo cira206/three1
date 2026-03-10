@@ -237,23 +237,6 @@ textarea.inf { resize:none; min-height:74px; }
 .sok{color:#2D8F5A;font-weight:800;font-size:10px;letter-spacing:.06em;text-transform:uppercase;}
 .swn{color:var(--red);font-weight:800;font-size:10px;letter-spacing:.06em;text-transform:uppercase;}
 
-/* ── STORE TABS ── */
-.stab {
-  font-family:var(--F);
-  font-size:11px;
-  font-weight:800;
-  letter-spacing:.1em;
-  text-transform:uppercase;
-  padding:9px 20px;
-  border:none;
-  border-bottom:2px solid transparent;
-  background:transparent;
-  cursor:pointer;
-  color:var(--text2);
-  transition:.12s;
-}
-.stab:hover { color:var(--black); }
-.stab.active { color:var(--black); border-bottom:2.5px solid var(--black); }
 /* ── TABS ── */
 .tabs { display:flex; border-bottom:1.5px solid var(--black); margin-bottom:18px; }
 .tab { padding:8px 16px; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; color:var(--text3); border-bottom:2px solid transparent; margin-bottom:-1.5px; transition:.12s; }
@@ -562,11 +545,11 @@ textarea.inf { resize:none; min-height:74px; }
 
       <!-- Tabs lọc danh mục -->
       <div style="display:flex;gap:0;border-bottom:1.5px solid var(--black);margin-bottom:20px">
-        <button id="stab-all"     class="stab active" onclick="filterStore('all')">TẤT CẢ</button>
-        <button id="stab-drink"   class="stab"        onclick="filterStore('drink_voucher')">☕ ĐỒ UỐNG</button>
-        <button id="stab-merch"   class="stab"        onclick="filterStore('merchandise')">🎁 TẶNG PHẨM</button>
-        <button id="stab-priv"    class="stab"        onclick="filterStore('privilege')">⭐ QUYỀN LỢI</button>
-        <button id="stab-history" class="stab"        onclick="filterStore('history')" style="margin-left:auto">📋 LỊCH SỬ ĐỔI</button>
+        <button id="stab-all"     class="stab active" onclick="filterStore('all')"          style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2.5px solid var(--black);background:transparent;cursor:pointer">TẤT CẢ</button>
+        <button id="stab-drink"   class="stab"        onclick="filterStore('drink_voucher')" style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer">☕ ĐỒ UỐNG</button>
+        <button id="stab-merch"   class="stab"        onclick="filterStore('merchandise')"  style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer">🎁 TẶNG PHẨM</button>
+        <button id="stab-priv"    class="stab"        onclick="filterStore('privilege')"    style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer">⭐ QUYỀN LỢI</button>
+        <button id="stab-history" class="stab"        onclick="filterStore('history')"      style="padding:9px 20px;font-size:11px;font-weight:800;letter-spacing:.1em;border:none;border-bottom:2px solid transparent;background:transparent;cursor:pointer;margin-left:auto">📋 LỊCH SỬ ĐỔI</button>
       </div>
 
       <!-- Store grid -->
@@ -938,10 +921,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
 document.addEventListener('DOMContentLoaded', async () => {
   try {
     const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
-    if (data?.value) {
-      const url = data.value.split('?')[0] + '?t=' + Date.now();
-      applyLogoEarly(url);
-    }
+    if (data?.value) applyLogoEarly(data.value);
   } catch(e) {}
 });
 
@@ -1190,7 +1170,17 @@ async function loadApp() {
     currentProfile = profile;
 
     // Check if approved
-    if (profileErr || !profile || !profile.is_approved) {
+    if (profileErr) {
+      // Lỗi network/RLS khi đọc profile - không signOut, hiện lỗi
+      console.error('Profile load error:', profileErr);
+      appLoaded = false;
+      const loginBtnErr = document.getElementById('btn-login');
+      if (loginBtnErr) { loginBtnErr.disabled = false; loginBtnErr.textContent = 'Đăng nhập →'; }
+      const loginErr = document.getElementById('login-err');
+      if (loginErr) { loginErr.textContent = 'Lỗi kết nối server: ' + (profileErr.message || profileErr.code || 'Unknown'); loginErr.style.display = 'block'; }
+      return;
+    }
+    if (!profile || !profile.is_approved) {
       await sb.auth.signOut();
       appLoaded = false;
       document.getElementById('auth-screen').style.display = 'flex';
@@ -1237,12 +1227,22 @@ async function loadApp() {
     updateTicker();
 
   } catch(e) {
-    // Lỗi nghiêm trọng — reset về màn hình đăng nhập
+    // Lỗi nghiêm trọng — hiện thông báo lỗi cụ thể
     console.error('loadApp critical error:', e);
     appLoaded = false;
-    await sb.auth.signOut();
-    document.getElementById('auth-screen').style.display = 'flex';
-    document.getElementById('app').classList.remove('visible');
+    const loginBtn2 = document.getElementById('btn-login');
+    if (loginBtn2) { loginBtn2.disabled = false; loginBtn2.textContent = 'Đăng nhập →'; }
+    // Chỉ signOut nếu là auth error, không signOut nếu là JS/network error
+    if (e?.message?.includes('JWT') || e?.message?.includes('auth') || e?.message?.includes('session')) {
+      await sb.auth.signOut();
+      document.getElementById('auth-screen').style.display = 'flex';
+      document.getElementById('app').classList.remove('visible');
+    } else {
+      // Hiện app dù có lỗi nhỏ, chỉ log lỗi
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('app').classList.add('visible');
+      console.warn('Non-critical loadApp error, continuing:', e.message);
+    }
   }
 }
 
@@ -2340,64 +2340,6 @@ async function deleteBranch(id, name) {
 // ═══════════════════════════════════════════════
 async function sendApprovalEmail(email, name) {
   try {
-    // Gọi qua Supabase RPC để tránh CORS (request từ server Supabase, không từ browser)
-    const { data, error } = await sb.rpc('send_approval_email', {
-      p_email: email,
-      p_name: name
-    });
-    if (error) {
-      console.error('RPC email error:', error);
-      return await sendApprovalEmailDirect(email, name);
-    }
-    if (data?.success) {
-      console.log('✅ Email gửi thành công qua RPC');
-      return true;
-    }
-    return await sendApprovalEmailDirect(email, name);
-  } catch(e) {
-    return await sendApprovalEmailDirect(email, name);
-  }
-}
-
-async function sendApprovalEmailDirect(email, name) {
-  try {
-    const emailHTML = `<!DOCTYPE html>
-<html lang="vi">
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#F7F5F2;font-family:'Helvetica Neue',Arial,sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0">
-    <tr><td align="center">
-      <table width="520" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:2px solid #0A0A0A">
-        <tr><td style="background:#0A0A0A;padding:28px 36px;text-align:center">
-          <div style="color:#FFFFFF;font-size:13px;font-weight:800;letter-spacing:.2em;text-transform:uppercase">THREE O'CLOCK</div>
-          <div style="color:#A8842C;font-size:11px;letter-spacing:.15em;margin-top:4px">STARWORK PLATFORM</div>
-        </td></tr>
-        <tr><td style="padding:36px 36px 28px">
-          <div style="font-size:22px;font-weight:800;color:#0A0A0A;margin-bottom:6px">Ch&#224;o m&#7915;ng, ${name}! 🎉</div>
-          <div style="width:40px;height:3px;background:#A8842C;margin-bottom:22px"></div>
-          <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 18px">
-            T&#224;i kho&#7843;n <strong>StarWork</strong> c&#7911;a b&#7841;n t&#7841;i <strong>THREE O'CLOCK</strong> &#273;&#227; &#273;&#432;&#7907;c Admin duy&#7879;t th&#224;nh c&#244;ng!
-          </p>
-          <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 28px">
-            T&#7915; b&#226;y gi&#7901; b&#7841;n c&#243; th&#7875; &#273;&#259;ng nh&#7853;p &#273;&#7875; ghi nh&#7853;n v&#224; c&#7843;m &#417;n &#273;&#7891;ng &#273;&#7897;i.
-          </p>
-          <div style="text-align:center;margin:28px 0">
-            <a href="https://threeoclock.vercel.app" style="background:#0A0A0A;color:#FFFFFF;padding:14px 32px;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;display:inline-block">&#272;&#259;ng nh&#7853;p ngay &rarr;</a>
-          </div>
-          <div style="background:#F7F5F2;border-left:3px solid #A8842C;padding:14px 16px">
-            <div style="font-size:11px;font-weight:800;color:#A8842C;text-transform:uppercase;margin-bottom:5px">T&#224;i kho&#7843;n &#273;&#259;ng nh&#7853;p</div>
-            <div style="font-size:13px;color:#0A0A0A;font-weight:600">${email}</div>
-          </div>
-        </td></tr>
-        <tr><td style="background:#F7F5F2;border-top:1px solid #D8D0C4;padding:18px 36px;text-align:center">
-          <div style="font-size:11px;color:#9A9490">THREE O'CLOCK &middot; StarWork Platform</div>
-          <div style="font-size:10px;color:#C0BDB9;margin-top:4px">Email n&#224;y &#273;&#432;&#7907;c g&#7917;i t&#7921; &#273;&#7897;ng, vui l&#242;ng kh&#244;ng reply.</div>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -2408,19 +2350,63 @@ async function sendApprovalEmailDirect(email, name) {
         from: 'StarWork <noreply@threeoclock.vn>',
         to: [email],
         subject: '🎉 Tài khoản StarWork của bạn đã được duyệt!',
-        html: emailHTML
+        html: `<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#F7F5F2;font-family:'Helvetica Neue',Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border:2px solid #0A0A0A">
+        <!-- Header -->
+        <tr><td style="background:#0A0A0A;padding:28px 36px;text-align:center">
+          <div style="color:#FFFFFF;font-size:13px;font-weight:800;letter-spacing:.2em;text-transform:uppercase">THREE O'CLOCK</div>
+          <div style="color:#A8842C;font-size:11px;font-weight:600;letter-spacing:.15em;margin-top:4px">STARWORK PLATFORM</div>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:36px 36px 28px">
+          <div style="font-size:22px;font-weight:800;color:#0A0A0A;margin-bottom:6px">Chào mừng, ${name}! 🎉</div>
+          <div style="width:40px;height:3px;background:#A8842C;margin-bottom:22px"></div>
+          <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 18px">
+            Tài khoản <strong>StarWork</strong> của bạn tại <strong>THREE O'CLOCK</strong> đã được Admin duyệt thành công!
+          </p>
+          <p style="font-size:14px;color:#5A5550;line-height:1.7;margin:0 0 28px">
+            Từ bây giờ bạn có thể đăng nhập để ghi nhận và cảm ơn đồng đội, theo dõi bảng xếp hạng, và tham gia vào văn hóa doanh nghiệp của chúng ta.
+          </p>
+          <div style="text-align:center;margin:28px 0">
+            <a href="https://threeoclock.vercel.app" style="background:#0A0A0A;color:#FFFFFF;padding:14px 32px;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;display:inline-block">
+              Đăng nhập ngay →
+            </a>
+          </div>
+          <div style="background:#F7F5F2;border-left:3px solid #A8842C;padding:14px 16px;margin-top:10px">
+            <div style="font-size:11px;font-weight:800;color:#A8842C;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">Tài khoản đăng nhập</div>
+            <div style="font-size:13px;color:#0A0A0A;font-weight:600">${email}</div>
+          </div>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="background:#F7F5F2;border-top:1.5px solid #D8D0C4;padding:18px 36px;text-align:center">
+          <div style="font-size:11px;color:#9A9490;letter-spacing:.08em">THREE O'CLOCK · StarWork Platform</div>
+          <div style="font-size:10px;color:#C0BDB9;margin-top:4px">Email này được gửi tự động, vui lòng không reply.</div>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
       })
     });
     const result = await res.json();
-    if (result.id) { return true; }
-    console.error('Resend error:', result);
-    return false;
+    if (result.id) {
+      console.log('✅ Email gửi thành công:', result.id);
+      return true;
+    } else {
+      console.error('❌ Resend error:', result);
+      return false;
+    }
   } catch(e) {
-    console.error('Email direct error:', e);
+    console.error('❌ Email error:', e);
     return false;
   }
 }
-
 
 async function approveUser(uid, name, email) {
   const { data } = await sb.rpc('approve_user', { p_user_id: uid });
@@ -2493,11 +2479,7 @@ async function loadAdminList() {
 async function loadLogo() {
   try {
     const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
-    if (data?.value) {
-      // Thêm cache busting để tránh browser cache logo cũ
-      const url = data.value.split('?')[0] + '?t=' + Date.now();
-      applyLogo(url);
-    }
+    if (data?.value) applyLogo(data.value);
   } catch(e) { console.warn('loadLogo error:', e); }
 }
 
