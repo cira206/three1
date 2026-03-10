@@ -275,6 +275,160 @@ textarea.inf { resize:none; min-height:74px; }
 .empty-state { text-align:center; padding:40px 20px; color:var(--text3); }
 .empty-icon { font-size:36px; margin-bottom:12px; }
 .empty-txt { font-size:13px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+
+/* ══════════════════════════════════════════════
+   RESPONSIVE — MOBILE (≤768px)
+   ══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+
+  /* ── AUTH SCREEN ── */
+  .auth-box { width:100%; max-width:100%; padding:28px 20px; border-left:none; border-right:none; border-radius:0; min-height:100vh; }
+  #auth-screen { align-items:flex-start; }
+  .auth-logo { margin-bottom:24px; }
+
+  /* ── APP LAYOUT ── */
+  #app { flex-direction:column; height:100vh; overflow:hidden; }
+
+  /* ── SIDEBAR → BOTTOM NAV ── */
+  .sidebar {
+    width:100% !important;
+    height:auto;
+    border-right:none;
+    border-top:2px solid var(--black);
+    flex-direction:row;
+    order:2;
+    flex-shrink:0;
+    overflow-x:auto;
+    overflow-y:hidden;
+  }
+  .logo-area { display:none; }
+  .sidebar-user { display:none; }
+  .nav {
+    display:flex;
+    flex-direction:row;
+    padding:0;
+    flex:1;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .nav::-webkit-scrollbar { display:none; }
+  .ng { display:none !important; } /* hide section labels */
+  .ni {
+    flex-direction:column;
+    gap:2px;
+    padding:8px 12px;
+    font-size:9px;
+    letter-spacing:.05em;
+    white-space:nowrap;
+    min-width:60px;
+    justify-content:center;
+    align-items:center;
+    border-bottom:none;
+    border-right:none;
+  }
+  .ni.active { background:var(--black); color:#FFF; }
+  .ni svg, .ni .ni-icon { display:none; }
+
+  /* ── MAIN CONTENT ── */
+  .main { order:1; flex:1; overflow:hidden; display:flex; flex-direction:column; }
+  .topbar { height:48px; padding:0 14px; flex-shrink:0; }
+  .topbar .tr { gap:5px; }
+  .live-pill { display:none; }
+  .page { padding:14px 14px 80px; }
+
+  /* ── TOPBAR MOBILE ── */
+  .mobile-user-info { display:flex; align-items:center; gap:8px; }
+
+  /* ── PAGE HEADER ── */
+  .sh { flex-direction:column; align-items:flex-start; gap:10px; margin-bottom:14px; }
+  .sh > * { width:100%; }
+
+  /* ── STATS ROW ── */
+  .stats-row { grid-template-columns:repeat(2,1fr); }
+
+  /* ── FEED LAYOUT ── */
+  .feed-layout { grid-template-columns:1fr; gap:12px; }
+  .feed-layout > div:last-child { display:none; } /* hide mini leaderboard sidebar */
+
+  /* ── POST CARD ── */
+  .card { padding:14px; }
+  .ph { gap:9px; }
+  .qrow { flex-wrap:wrap; }
+  .qs { width:36px; height:36px; font-size:16px; }
+
+  /* ── LEADERBOARD ── */
+  .lbpodium { flex-direction:column; }
+  .pi { padding:14px; flex-direction:row; gap:12px; justify-content:flex-start; }
+  .pav { width:40px; height:40px; font-size:15px; }
+
+  /* ── PROFILE ── */
+  .prof-banner { flex-direction:column; gap:14px; }
+  .profnums { margin-left:0; grid-template-columns:repeat(3,1fr); gap:10px; width:100%; }
+
+  /* ── STORE ── */
+  .stab { padding:8px 10px; font-size:9px; letter-spacing:.05em; }
+  .store-grid, [style*="grid-template-columns: repeat(3"] { grid-template-columns:repeat(2,1fr) !important; }
+
+  /* ── ADMIN TABLE ── */
+  table { font-size:11px; }
+  table th, table td { padding:6px 8px; }
+  .btn-red { padding:3px 6px; font-size:9px; }
+
+  /* ── MODAL ── */
+  .modal-box { width:94% !important; max-width:94% !important; padding:20px 16px; margin:0 auto; }
+
+  /* ── CHALLENGES ── */
+  [style*="grid-template-columns: repeat(2"] { grid-template-columns:1fr !important; }
+  [style*="grid-template-columns: repeat(3"] { grid-template-columns:1fr !important; }
+
+  /* ── BUTTONS ── */
+  .btn { padding:8px 14px; font-size:10px; }
+  .mf { flex-direction:column; }
+  .mf .btn { width:100%; justify-content:center; }
+
+  /* ── CULTURE WALL ── */
+  .vrow { gap:4px; }
+  .vtag { font-size:9px; padding:2px 7px; }
+
+  /* ── NOTIFICATIONS PANEL ── */
+  #notif-panel { width:100% !important; right:0 !important; left:0 !important; top:48px !important; }
+
+  /* ── FORM INPUTS ── */
+  input, select, textarea { font-size:16px !important; } /* prevent zoom on iOS */
+
+  /* ── GIVE STARS FORM ── */
+  .srow { flex-wrap:wrap; }
+}
+
+/* ── TABLET (769px – 1024px) ── */
+@media (min-width:769px) and (max-width:1024px) {
+  .sidebar { width:180px; }
+  .feed-layout { grid-template-columns:1fr 220px; }
+  .stats-row { grid-template-columns:repeat(2,1fr); }
+  .page { padding:18px 20px; }
+  .store-grid { grid-template-columns:repeat(2,1fr) !important; }
+}
+
+
+/* ── NAV ITEM DESKTOP/MOBILE TEXT ── */
+.ni-icon { display:none; font-size:18px; }
+.ni-short { display:none; font-size:9px; font-weight:700; letter-spacing:.03em; margin-top:2px; }
+.ni-full { display:inline; }
+@media (max-width:768px) {
+  .ni-icon { display:block; }
+  .ni-short { display:block; }
+  .ni-full { display:none; }
+  .ni { min-width:52px; padding:6px 8px 8px; }
+}
+
+@media (max-width:768px) {
+  .mobile-user-chip { display:flex !important; }
+  .topbar-title { font-size:13px; }
+  /* Tặng sao button - smaller on mobile */
+  .topbar .btn { padding:6px 10px; font-size:10px; }
+}
 </style>
 </head>
 <body>
@@ -374,16 +528,16 @@ textarea.inf { resize:none; min-height:74px; }
     </div>
     <div class="nav">
       <div class="ng">Main</div>
-      <div class="ni active" onclick="go('feed')">◈ &nbsp;Trang chủ</div>
-      <div class="ni" onclick="go('leaderboard')">◆ &nbsp;Bảng xếp hạng</div>
-      <div class="ni" onclick="go('wall')">◉ &nbsp;Culture Wall</div>
-      <div class="ni" onclick="go('challenges')">◎ &nbsp;Thử thách</div>
-      <div class="ni" onclick="go('store')">◇ &nbsp;Đổi quà</div>
+      <div class="ni active" onclick="go('feed')"><span class="ni-icon">🏠</span><span class="ni-full">◈ &nbsp;Trang chủ</span><span class="ni-short">Trang chủ</span></div>
+      <div class="ni" onclick="go('leaderboard')"><span class="ni-icon">🏆</span><span class="ni-full">◆ &nbsp;Bảng xếp hạng</span><span class="ni-short">BXH</span></div>
+      <div class="ni" onclick="go('wall')"><span class="ni-icon">🖼</span><span class="ni-full">◉ &nbsp;Culture Wall</span><span class="ni-short">Culture</span></div>
+      <div class="ni" onclick="go('challenges')"><span class="ni-icon">🎯</span><span class="ni-full">◎ &nbsp;Thử thách</span><span class="ni-short">Thử thách</span></div>
+      <div class="ni" onclick="go('store')"><span class="ni-icon">🎁</span><span class="ni-full">◇ &nbsp;Đổi quà</span><span class="ni-short">Đổi quà</span></div>
       <div class="ng" style="margin-top:10px">Personal</div>
-      <div class="ni" onclick="go('profile')">○ &nbsp;Hồ sơ của tôi</div>
-      <div class="ni" onclick="go('aireport')">◈ &nbsp;AI Báo cáo</div>
+      <div class="ni" onclick="go('profile')"><span class="ni-icon">👤</span><span class="ni-full">○ &nbsp;Hồ sơ của tôi</span><span class="ni-short">Hồ sơ</span></div>
+      <div class="ni" onclick="go('aireport')"><span class="ni-icon">🤖</span><span class="ni-full">◈ &nbsp;AI Báo cáo</span><span class="ni-short">AI</span></div>
       <div class="ng" style="margin-top:10px;display:none" id="admin-nav-group">Admin</div>
-      <div class="ni" id="admin-nav-item" onclick="go('admin')" style="display:none">▪ &nbsp;Admin Panel</div>
+      <div class="ni" id="admin-nav-item" onclick="go('admin')" style="display:none"><span class="ni-icon">⚙️</span><span class="ni-full">▪ &nbsp;Admin Panel</span><span class="ni-short">Admin</span></div>
     </div>
     <div class="sidebar-user">
       <div class="uav" id="sidebar-av">?</div>
@@ -399,6 +553,10 @@ textarea.inf { resize:none; min-height:74px; }
   <div class="main">
     <header class="topbar">
       <div class="topbar-title" id="page-title">Trang Chủ</div>
+      <div class="mobile-user-chip" onclick="go('profile')" style="display:none;align-items:center;gap:6px;cursor:pointer">
+        <div class="uav" id="topbar-av" style="width:26px;height:26px;font-size:10px">?</div>
+        <span id="topbar-stars" style="font-size:11px;font-weight:800;color:var(--gold)">0★</span>
+      </div>
       <div class="live-pill"><div class="ldot"></div><span id="online-count">--</span> online</div>
       <div class="tr">
         <div id="notif-btn" onclick="toggleNotifPanel()" style="display:none;position:relative;cursor:pointer;padding:6px 10px;border:1.5px solid var(--black);background:#FFF;margin-right:4px">
@@ -1218,6 +1376,11 @@ async function loadApp() {
     document.getElementById('sidebar-name').textContent  = profile.full_name;
     document.getElementById('sidebar-dept').textContent  = profile.branch ? profile.branch + ' · ' + profile.department : profile.department;
     document.getElementById('sidebar-stars').textContent = (profile.total_stars || 0) + '★';
+    // Mobile topbar user info
+    const topbarAv = document.getElementById('topbar-av');
+    const topbarStars = document.getElementById('topbar-stars');
+    if (topbarAv) topbarAv.textContent = profile.avatar_text || '?';
+    if (topbarStars) topbarStars.textContent = (profile.total_stars || 0) + '★';
 
     if (profile.role === 'admin' || profile.role === 'manager') {
       document.getElementById('admin-nav-group').style.display = 'block';
