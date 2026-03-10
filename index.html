@@ -1029,47 +1029,36 @@ async function doLogin() {
   const err   = document.getElementById('login-err');
   const btn   = document.getElementById('btn-login');
   err.style.display = 'none';
-  if (!email || !pass) { showErr(err, 'Vui lòng nhập đầy đủ thông tin'); return; }
-  btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
-  
-  const tryLogin = async () => {
-    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-    return { data, error };
-  };
 
-  let attempts = 0;
-  const maxAttempts = 2;
-  
-  const attemptLogin = async () => {
-    attempts++;
-    const timeout = setTimeout(() => {
-      if (attempts < maxAttempts) {
-        btn.textContent = 'Đang thử lại...';
-        attemptLogin();
-      } else {
-        btn.disabled = false; btn.textContent = 'Đăng nhập →';
-        showErr(err, 'Kết nối chậm, vui lòng thử lại sau ít phút');
-      }
-    }, 15000);
-    try {
-      const { data, error } = await tryLogin();
-      clearTimeout(timeout);
+  if (!email || !pass) { showErr(err, 'Vui lòng nhập đầy đủ thông tin'); return; }
+
+  btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
+
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+
+    if (error) {
       btn.disabled = false; btn.textContent = 'Đăng nhập →';
-      if (error) { showErr(err, 'Email hoặc mật khẩu không đúng'); return; }
-      // Reset để onAuthStateChange có thể loadApp
-      appLoaded = false;
-    } catch(e) {
-      clearTimeout(timeout);
-      if (attempts < maxAttempts) {
-        btn.textContent = 'Đang thử lại...';
-        attemptLogin();
+      if (error.message?.includes('Invalid login')) {
+        showErr(err, 'Email hoặc mật khẩu không đúng');
+      } else if (error.message?.includes('Email not confirmed')) {
+        showErr(err, 'Email chưa được xác nhận');
       } else {
-        btn.disabled = false; btn.textContent = 'Đăng nhập →';
-        showErr(err, 'Lỗi kết nối, vui lòng thử lại');
+        showErr(err, 'Đăng nhập thất bại: ' + error.message);
       }
+      return;
     }
-  };
-  attemptLogin();
+
+    if (data?.user) {
+      // Đăng nhập thành công — loadApp trực tiếp, không chờ onAuthStateChange
+      appLoaded = true;
+      currentUser = data.user;
+      await loadApp();
+    }
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Đăng nhập →';
+    showErr(err, 'Lỗi kết nối, vui lòng thử lại');
+  }
 }
 
 async function doRegister() {
@@ -1175,9 +1164,14 @@ async function loadApp() {
   const { data: profile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
   currentProfile = profile;
 
+  // Reset login button luôn (phòng trường hợp loadApp được gọi từ doLogin)
+  const loginBtn = document.getElementById('btn-login');
+  if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Đăng nhập →'; }
+
   // Check if approved
-  if (profile && !profile.is_approved) {
+  if (!profile || !profile.is_approved) {
     await sb.auth.signOut();
+    appLoaded = false;
     document.getElementById('auth-screen').style.display = 'flex';
     document.getElementById('login-form').style.display = 'none';
     document.getElementById('register-form').style.display = 'none';
