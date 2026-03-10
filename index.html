@@ -1365,14 +1365,16 @@ let appLoaded = false;
 
 // ── INIT: Check session ngay khi load (cách đáng tin cậy nhất) ──
 (async () => {
-  const { data: { session } } = await sb.auth.getSession();
+  console.log('🟡 Checking session...');
+  const { data: { session }, error: sessErr } = await sb.auth.getSession();
+  console.log('🟡 Session result:', session?.user?.email, 'error:', sessErr?.message);
   if (session?.user) {
-    // Có session trong localStorage → load app
+    console.log('🟡 Session found → loadApp()');
     appLoaded = true;
     currentUser = session.user;
     await loadApp();
   } else {
-    // Chưa đăng nhập → show login
+    console.log('🟡 No session → show login');
     document.getElementById('auth-screen').style.display = 'flex';
   }
 })();
@@ -1403,20 +1405,18 @@ sb.auth.onAuthStateChange(async (event, session) => {
 });
 
 async function loadApp() {
-  // Reset login button ngay lập tức
+  console.log('🔵 loadApp() START, user:', currentUser?.email);
   const loginBtn = document.getElementById('btn-login');
   if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Đăng nhập →'; }
 
   try {
-    // Load profile first to check approval
+    console.log('🔵 Fetching profile...');
     const { data: profile, error: profileErr } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+    console.log('🔵 Profile result:', profile?.full_name, 'error:', profileErr?.message);
     currentProfile = profile;
 
-    // Check if approved
     if (profileErr) {
-      console.error('❌ PROFILE ERROR:', JSON.stringify(profileErr));
-      // Chỉ signOut nếu lỗi 401 (session thực sự invalid)
-      // Lỗi khác (network, timeout) → KHÔNG signOut, chỉ báo lỗi
+      console.error('❌ PROFILE ERROR code:', profileErr.code, 'msg:', profileErr.message);
       const isAuthError = profileErr.code === '401' || profileErr.message?.includes('JWT') || profileErr.message?.includes('invalid claim');
       if (isAuthError) {
         appLoaded = false;
@@ -1427,12 +1427,13 @@ async function loadApp() {
       }
       const loginErrEl = document.getElementById('login-err');
       if (loginErrEl) {
-        loginErrEl.textContent = '⚠️ Lỗi tải tài khoản. Vui lòng thử lại.';
+        loginErrEl.textContent = '⚠️ Lỗi tải tài khoản: ' + profileErr.message;
         loginErrEl.style.display = 'block';
       }
       return;
     }
     if (!profile) {
+      console.error('❌ PROFILE NULL');
       appLoaded = false;
       await sb.auth.signOut();
       currentUser = null; currentProfile = null;
@@ -1457,6 +1458,7 @@ async function loadApp() {
       return;
     }
 
+    console.log('✅ Showing app, hiding auth-screen');
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').classList.add('visible');
 
@@ -1500,15 +1502,13 @@ async function loadApp() {
   } catch(e) {
     console.error('❌ loadApp CRASH:', e.message, e.stack);
     appLoaded = false;
-    // Clear session để tránh bị kẹt
-    try { await sb.auth.signOut(); } catch(_) {}
-    currentUser = null;
-    currentProfile = null;
+    // KHÔNG signOut khi crash - có thể là network error tạm thời
+    // Chỉ báo lỗi để user biết
     document.getElementById('auth-screen').style.display = 'flex';
     document.getElementById('app').classList.remove('visible');
     const loginErrCatch = document.getElementById('login-err');
     if (loginErrCatch) {
-      loginErrCatch.textContent = '⚠️ Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
+      loginErrCatch.textContent = '❌ Lỗi: ' + e.message + ' — Vui lòng thử lại hoặc tải lại trang.';
       loginErrCatch.style.display = 'block';
     }
   }
