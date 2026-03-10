@@ -2962,12 +2962,13 @@ async function deleteEmployee(uid, name) {
   if (target?.email === 'loiphambb@gmail.com') {
     toast('❌ Không thể xóa tài khoản Super Admin'); return;
   }
-  const { data, error } = await sb.rpc('reject_user', { p_user_id: uid });
-  if (error) { toast('❌ Lỗi: ' + error.message); return; }
-  toast('🗑 Đã xóa tài khoản ' + name);
-  closeEmpModal();
-  loadEmployeesList();
-  loadAdmin();
+  try {
+    await api('DELETE', 'profiles?id=eq.' + uid);
+    toast('🗑 Đã xóa tài khoản ' + name);
+    closeEmpModal();
+    loadEmployeesList();
+    loadAdmin();
+  } catch(e) { toast('❌ Lỗi: ' + e.message); }
 }
 
 // ── Split loadAdmin into separate lazy functions ──
@@ -3199,12 +3200,12 @@ async function approveUser(uid, name, email) {
 }
 
 async function rejectUser(uid, name) {
-  if (!confirm('Xóa tài khoản ' + name + '?')) return;
+  if (!confirm('Từ chối và xóa tài khoản ' + name + '?')) return;
   try {
     await api('DELETE', 'profiles?id=eq.' + uid);
-  } catch(e) { toast('❌ Lỗi: ' + e.message); return; }
-  toast('🗑 Đã từ chối ' + name);
-  loadAdmin();
+    toast('🗑 Đã từ chối ' + name);
+    loadAdmin();
+  } catch(e) { toast('❌ Lỗi: ' + e.message); }
 }
 
 async function promoteAdmin(uid, name) {
