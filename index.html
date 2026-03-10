@@ -1168,6 +1168,52 @@ textarea.inf { resize:none; min-height:74px; }
   </div>
 </div>
 
+<!-- POST MODAL -->
+<div class="modal-bg" id="post-modal">
+  <div class="modal-box">
+    <div class="mt2">+ Đăng Lời Cảm Ơn</div>
+    <div class="ms2">Ghi nhận đồng nghiệp kèm hình ảnh</div>
+    <div style="margin-bottom:11px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Người nhận</div>
+      <select class="inf" id="pm-to" style="margin-bottom:0"><option value="">Chọn đồng nghiệp...</option></select>
+    </div>
+    <div style="margin-bottom:11px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:7px">Số sao tặng</div>
+      <div style="display:flex;gap:6px" id="pm-stars-row">
+        <div class="so sel" data-stars="1" onclick="selPostStar(this)" style="flex:1;text-align:center">1★</div>
+        <div class="so" data-stars="2" onclick="selPostStar(this)" style="flex:1;text-align:center">2★</div>
+        <div class="so" data-stars="3" onclick="selPostStar(this)" style="flex:1;text-align:center">3★</div>
+        <div class="so" data-stars="5" onclick="selPostStar(this)" style="flex:1;text-align:center">5★</div>
+      </div>
+    </div>
+    <div style="margin-bottom:11px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Giá trị</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="pm-val-row">
+        <div class="vc" onclick="selPostVal(this)" data-val="teamwork" style="padding:5px 10px;border:1.5px solid var(--border);cursor:pointer;font-size:11px">Teamwork</div>
+        <div class="vc" onclick="selPostVal(this)" data-val="innovation" style="padding:5px 10px;border:1.5px solid var(--border);cursor:pointer;font-size:11px">Innovation</div>
+        <div class="vc" onclick="selPostVal(this)" data-val="ownership" style="padding:5px 10px;border:1.5px solid var(--border);cursor:pointer;font-size:11px">Ownership</div>
+        <div class="vc" onclick="selPostVal(this)" data-val="customer_first" style="padding:5px 10px;border:1.5px solid var(--border);cursor:pointer;font-size:11px">Customer First</div>
+      </div>
+    </div>
+    <div style="margin-bottom:11px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Lời cảm ơn</div>
+      <textarea class="inf" id="pm-msg" style="min-height:70px;margin-bottom:0" placeholder="Viết lời cảm ơn..."></textarea>
+    </div>
+    <div style="margin-bottom:11px">
+      <input type="file" id="pm-img-input" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewPostModalImage(this)">
+      <div id="pm-img-preview" style="display:none;margin-bottom:8px;position:relative">
+        <img id="pm-img-thumb" style="max-height:120px;max-width:100%;border:1.5px solid var(--border-soft);display:block">
+        <button onclick="removePostModalImage()" style="position:absolute;top:4px;right:4px;background:var(--red);color:#FFF;border:none;width:22px;height:22px;cursor:pointer;font-size:12px;font-weight:800">✕</button>
+      </div>
+      <button class="btn btn-outline" style="padding:5px 11px;font-size:10px" onclick="document.getElementById('pm-img-input').click()">📎 Đính kèm ảnh</button>
+    </div>
+    <div class="mf">
+      <button class="btn btn-outline" onclick="closePostModal()">Hủy</button>
+      <button class="btn btn-black" onclick="submitPostModal()" id="btn-post-modal">Đăng ngay →</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toastEl"><span>✦</span><span id="tmsg">OK</span></div>
 
@@ -1905,9 +1951,87 @@ async function resolveFlag(id) {
 // GIVE STARS / POST
 // ═══════════════════════════════════════════════
 function openCompose() {
-  const c = document.getElementById('ca');
-  c.classList.toggle('open');
-  if (c.classList.contains('open')) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  openPostModal();
+}
+function openPostModal() {
+  // Populate people dropdown
+  const sel = document.getElementById('pm-to');
+  sel.innerHTML = '<option value="">Chọn đồng nghiệp...</option>';
+  document.getElementById('modal-to').querySelectorAll('option').forEach(o => {
+    if (o.value) sel.appendChild(o.cloneNode(true));
+  });
+  document.getElementById('post-modal').classList.add('open');
+}
+function closePostModal() {
+  document.getElementById('post-modal').classList.remove('open');
+  document.getElementById('pm-msg').value = '';
+  document.getElementById('pm-img-preview').style.display = 'none';
+  document.getElementById('pm-img-input').value = '';
+  document.querySelectorAll('#pm-stars-row .so').forEach(s => s.classList.remove('sel'));
+  document.querySelector('#pm-stars-row .so').classList.add('sel');
+  document.querySelectorAll('#pm-val-row .vc').forEach(v => v.classList.remove('sel'));
+}
+function selPostStar(el) {
+  const already = el.classList.contains('sel');
+  el.parentElement.querySelectorAll('.so').forEach(s => s.classList.remove('sel'));
+  if (!already) el.classList.add('sel');
+}
+function selPostVal(el) {
+  el.parentElement.querySelectorAll('.vc').forEach(v => v.classList.remove('sel'));
+  el.classList.add('sel');
+}
+let _pmImgFile = null;
+function previewPostModalImage(input) {
+  const file = input.files[0]; if (!file) return;
+  _pmImgFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('pm-img-thumb').src = e.target.result;
+    document.getElementById('pm-img-preview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+function removePostModalImage() {
+  _pmImgFile = null;
+  document.getElementById('pm-img-preview').style.display = 'none';
+  document.getElementById('pm-img-input').value = '';
+}
+async function submitPostModal() {
+  const toId = document.getElementById('pm-to').value;
+  const msg = document.getElementById('pm-msg').value.trim();
+  const starEl = document.querySelector('#pm-stars-row .so.sel');
+  const valEl = document.querySelector('#pm-val-row .vc.sel');
+  const stars = starEl ? parseInt(starEl.dataset.stars) : 1;
+  const val = valEl ? valEl.dataset.val : 'teamwork';
+  if (!toId) { toast('Vui lòng chọn người nhận'); return; }
+  const btn = document.getElementById('btn-post-modal');
+  btn.disabled = true; btn.textContent = 'Đang gửi...';
+  let imageUrl = null;
+  if (_pmImgFile) {
+    imageUrl = await uploadImageFile(_pmImgFile);
+  }
+  let data = null, error = null;
+  try {
+    if (toId === currentUser.id) throw new Error('Không thể tự tặng sao cho mình');
+    const isSuperAdmin = currentUser.email === 'loiphambb@gmail.com';
+    if (!isSuperAdmin) {
+      const quotaRes = await apiGet('recognitions?from_user_id=eq.' + currentUser.id + '&select=stars&created_at=gte.' + new Date().toISOString().slice(0,10));
+      const usedToday = Array.isArray(quotaRes) ? quotaRes.reduce((s,r) => s + (r.stars||0), 0) : 0;
+      if (usedToday + stars > 5) throw new Error('Không đủ quota. Còn lại: ' + (5 - usedToday) + '★ hôm nay');
+    }
+    await api('POST', 'recognitions', { from_user_id: currentUser.id, to_user_id: toId, stars, message: msg || ('Cảm ơn bạn! +' + stars + '★'), value_tag: val, image_url: imageUrl });
+    const recvProfile = await apiGet('profiles?id=eq.' + toId + '&select=total_stars,redeemable_points,reputation_points&limit=1');
+    if (recvProfile?.[0]) {
+      const p = recvProfile[0];
+      await api('PATCH', 'profiles?id=eq.' + toId, { total_stars: (p.total_stars||0) + stars, redeemable_points: (p.redeemable_points||0) + stars, reputation_points: (p.reputation_points||0) + stars });
+    }
+    data = { success: true };
+  } catch(e) { error = e; }
+  btn.disabled = false; btn.textContent = 'Đăng ngay →';
+  if (error || !data?.success) { toast('❌ ' + (error?.message || 'Lỗi')); return; }
+  closePostModal();
+  toast('✦ Đã đăng lời cảm ơn thành công!');
+  await loadFeed();
 }
 
 function openGiveModal() {
@@ -1918,6 +2042,9 @@ function closeModal() {
 }
 document.getElementById('give-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('give-modal')) closeModal();
+});
+document.getElementById('post-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('post-modal')) closePostModal();
 });
 document.getElementById('emp-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('emp-modal')) closeEmpModal();
@@ -1991,12 +2118,38 @@ function removeComposeImage() {
 async function uploadRecognitionImage(file) {
   const compressed = await compressImage(file, 100);
   const path = `${currentUser.id}/${Date.now()}.jpg`;
-  const { error } = await sb.storage.from('recognition-images').upload(path, compressed, {
-    contentType: 'image/jpeg', upsert: false
+  const res = await fetch('https://zkdothuvthxenonehnyj.supabase.co/storage/v1/object/recognition-images/' + path, {
+    method: 'POST',
+    headers: {
+      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZG90aHV2dGh4ZW5vbmVobnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTgxMTAsImV4cCI6MjA4ODUzNDExMH0.O4xPbe07-8d0VDUmpt1UukIsN-tEeLbdK9EHUYctSHs',
+      'Authorization': 'Bearer ' + _token,
+      'Content-Type': 'image/jpeg',
+      'x-upsert': 'true'
+    },
+    body: compressed
   });
-  if (error) { console.error('Upload error:', error); return null; }
-  const { data } = sb.storage.from('recognition-images').getPublicUrl(path);
-  return data.publicUrl;
+  if (!res.ok) { const t = await res.text(); console.error('Upload error:', res.status, t); return null; }
+  return 'https://zkdothuvthxenonehnyj.supabase.co/storage/v1/object/public/recognition-images/' + path;
+}
+
+async function uploadImageFile(file) {
+  // Compress
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement('canvas');
+  const MAX = 1200;
+  let w = bitmap.width, h = bitmap.height;
+  if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+  const compressed = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.82));
+  const path = currentUser.id + '/' + Date.now() + '.jpg';
+  const res = await fetch('https://zkdothuvthxenonehnyj.supabase.co/storage/v1/object/recognition-images/' + path, {
+    method: 'POST',
+    headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZG90aHV2dGh4ZW5vbmVobnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTgxMTAsImV4cCI6MjA4ODUzNDExMH0.O4xPbe07-8d0VDUmpt1UukIsN-tEeLbdK9EHUYctSHs', 'Authorization': 'Bearer ' + _token, 'Content-Type': 'image/jpeg', 'x-upsert': 'true' },
+    body: compressed
+  });
+  if (!res.ok) { console.error('Upload error:', res.status); return null; }
+  return 'https://zkdothuvthxenonehnyj.supabase.co/storage/v1/object/public/recognition-images/' + path;
 }
 
 async function submitPost() {
