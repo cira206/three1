@@ -967,6 +967,7 @@ textarea.inf { resize:none; min-height:74px; }
         <div class="tab" onclick="adminTab('flags',this)">⚠ Cảnh báo</div>
         <div class="tab" onclick="adminTab('fraud',this)">🔍 Chống gian lận</div>
         <div class="tab" onclick="adminTab('history',this)">📋 Lịch sử</div>
+        <div class="tab" onclick="adminTab('rewards',this)">🎁 Đổi quà</div>
       </div>
 
       <!-- PENDING USERS -->
@@ -1095,6 +1096,44 @@ textarea.inf { resize:none; min-height:74px; }
         </table>
       </div>
       </div>
+
+      <!-- REWARDS ADMIN -->
+      <div id="admin-section-rewards" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="ct">🎁 Quản lý Phần Thưởng</div>
+          <div style="background:var(--bg2);border:1.5px solid var(--border-soft);padding:16px;margin-bottom:16px">
+            <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px">+ Thêm phần thưởng mới</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div><label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px">Tên *</label>
+                <input id="rw-name" class="inp" placeholder="VD: Voucher Trà Sữa" style="width:100%;box-sizing:border-box"></div>
+              <div><label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px">Mô tả</label>
+                <input id="rw-desc" class="inp" placeholder="VD: 1 ly trà sữa miễn phí" style="width:100%;box-sizing:border-box"></div>
+              <div><label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px">Loại *</label>
+                <select id="rw-cat" class="inp" style="width:100%;box-sizing:border-box">
+                  <option value="drink_voucher">☕ Đồ uống</option>
+                  <option value="merchandise">🎁 Tặng phẩm</option>
+                  <option value="privilege">⭐ Quyền lợi</option>
+                </select></div>
+              <div><label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px">Điểm cần *</label>
+                <input id="rw-points" class="inp" type="number" placeholder="50" min="1" style="width:100%;box-sizing:border-box"></div>
+              <div><label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px">Hạn dùng (ngày, bỏ trống = không hạn)</label>
+                <input id="rw-expiry" class="inp" type="number" placeholder="7" min="1" style="width:100%;box-sizing:border-box"></div>
+              <div><label style="font-size:11px;font-weight:700;display:block;margin-bottom:4px">Emoji icon</label>
+                <input id="rw-emoji" class="inp" placeholder="🎁" style="width:100%;box-sizing:border-box" value="🎁"></div>
+            </div>
+            <button class="btn btn-black" style="width:100%" onclick="addReward()">+ Thêm phần thưởng</button>
+          </div>
+          <div id="rewards-admin-list"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+        <div class="card">
+          <div class="ct">📋 Lịch sử đổi quà của nhân viên</div>
+          <div style="margin-bottom:12px">
+            <input id="voucher-search" class="inp" placeholder="Tìm tên nhân viên hoặc mã voucher..." style="width:100%;box-sizing:border-box" oninput="searchVoucher()">
+          </div>
+          <div id="redemptions-admin-list"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+      </div>
+
     </div>
 
   </div><!-- /main -->
@@ -1138,26 +1177,110 @@ textarea.inf { resize:none; min-height:74px; }
 // ═══════════════════════════════════════════════
 const SUPABASE_URL = 'https://zkdothuvthxenonehnyj.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZG90aHV2dGh4ZW5vbmVobnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTgxMTAsImV4cCI6MjA4ODUzNDExMH0.O4xPbe07-8d0VDUmpt1UukIsN-tEeLbdK9EHUYctSHs';
+const STORAGE_KEY = 'sw_session';
+
+// Supabase client - chỉ dùng cho realtime và storage upload
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
 });
 
-// Load logo sớm
+let currentUser   = null;
+let currentProfile = null;
+let _token        = null;
+let realtimeChannel = null;
+
+// ═══════════════════════════════════════════════
+// CORE: REST fetch với token
+// ═══════════════════════════════════════════════
+async function api(method, path, body) {
+  const m = method || 'GET';
+  let prefer = '';
+  if (m === 'POST' && !path.startsWith('rpc')) prefer = 'return=representation';
+  if (m === 'PATCH' || m === 'DELETE') prefer = 'return=minimal';
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+    method: m,
+    headers: {
+      'apikey':        SUPABASE_KEY,
+      'Authorization': 'Bearer ' + (_token || SUPABASE_KEY),
+      'Content-Type':  'application/json',
+      ...(prefer ? { 'Prefer': prefer } : {})
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok && res.status !== 200 && res.status !== 204) {
+    const txt = await res.text();
+    throw new Error(res.status + ': ' + txt.slice(0,120));
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function apiGet(path)        { return api('GET',   path);       }
+function apiPost(path, body) { return api('POST',  path, body); }
+function apiRpc(fn, params)  { return api('POST', 'rpc/' + fn, params || {}); }
+
+// ═══════════════════════════════════════════════
+// SESSION: lưu/đọc từ localStorage thủ công
+// ═══════════════════════════════════════════════
+function saveSession(access_token, refresh_token, user) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ access_token, refresh_token, user, saved_at: Date.now() }));
+  _token = access_token;
+  currentUser = user;
+}
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch(e) { return null; }
+}
+
+function clearSession() {
+  localStorage.removeItem(STORAGE_KEY);
+  _token = null;
+  currentUser = null;
+  currentProfile = null;
+}
+
+async function refreshToken(refresh_token) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token })
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.access_token) {
+      saveSession(data.access_token, data.refresh_token, data.user);
+      return data.access_token;
+    }
+  } catch(e) {}
+  return null;
+}
+
+// ═══════════════════════════════════════════════
+// LOGO
+// ═══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
-    if (data?.value) applyLogoEarly(data.value);
+    const arr = await fetch(
+      SUPABASE_URL + '/rest/v1/app_settings?key=eq.logo_url&select=value&limit=1',
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
+    ).then(r => r.json());
+    if (arr?.[0]?.value) applyLogoEarly(arr[0].value);
   } catch(e) {}
 });
 
 function applyLogoEarly(url) {
   if (!url) return;
-  const authSvg = document.getElementById('auth-logo-svg');
-  if (authSvg) {
+  const el = document.getElementById('auth-logo-svg');
+  if (el) {
     const img = document.createElement('img');
     img.id = 'auth-logo-svg'; img.src = url;
     img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
-    authSvg.replaceWith(img);
+    el.replaceWith(img);
   }
   document.querySelectorAll('.brand-logo').forEach(el => {
     const img = document.createElement('img');
@@ -1167,36 +1290,14 @@ function applyLogoEarly(url) {
   });
 }
 
-let currentUser = null;
-let currentProfile = null;
-let currentSession = null;
-let realtimeChannel = null;
-let _token = null; // access token hiện tại
-
-// Helper: fetch REST API với token
-async function sbGet(table, params) {
-  const isRpc = table.startsWith('rpc/');
-  const url = SUPABASE_URL + '/rest/v1/' + table + (params ? '?' + params : '');
-  const res = await fetch(url, {
-    method: isRpc ? 'POST' : 'GET',
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + (_token || SUPABASE_KEY),
-      'Content-Type': 'application/json'
-    },
-    body: isRpc ? '{}' : undefined
-  });
-  return res.json();
-}
-
 // ═══════════════════════════════════════════════
-// AUTH
+// AUTH UI
 // ═══════════════════════════════════════════════
 function switchTab(tab) {
   document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
-  document.getElementById('login-form').style.display = tab==='login'?'block':'none';
-  document.getElementById('register-form').style.display = tab==='register'?'block':'none';
-  document.getElementById('pending-msg').style.display = 'none';
+  document.getElementById('login-form').style.display     = tab==='login' ? 'block' : 'none';
+  document.getElementById('register-form').style.display  = tab==='register' ? 'block' : 'none';
+  document.getElementById('pending-msg').style.display    = 'none';
   document.querySelectorAll('.auth-tab').forEach(t => t.style.display = '');
   const bf = document.getElementById('branch-field');
   if (bf) bf.style.display = 'none';
@@ -1212,31 +1313,25 @@ async function onKhoiChange(sel) {
   deptLabel.textContent = khoi === 'KHỐI VĂN PHÒNG' ? 'Phòng ban' : 'Vị trí / Cửa hàng';
   deptSel.innerHTML = '<option value="">Đang tải...</option>';
   try {
-    const res = await fetch(
+    const data = await fetch(
       SUPABASE_URL + '/rest/v1/departments?khoi=eq.' + encodeURIComponent(khoi) + '&is_active=eq.true&select=name&order=name',
       { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY } }
-    );
-    const data = await res.json();
+    ).then(r => r.json());
     deptSel.innerHTML = data?.length
       ? '<option value="">-- Chọn phòng ban --</option>' + data.map(d => `<option value="${d.name}">${d.name}</option>`).join('')
       : '<option value="">-- Chưa có phòng ban nào --</option>';
-  } catch(e) {
-    deptSel.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
-  }
+  } catch(e) { deptSel.innerHTML = '<option value="">Lỗi tải dữ liệu</option>'; }
 }
 
 async function onDeptChange(sel) {
   const bf = document.getElementById('branch-field');
   if (sel.value === '__branch__') {
     bf.style.display = 'block';
-    const { data } = await sb.from('branches').select('name').eq('is_active', true).order('name');
-    const branchSel = document.getElementById('reg-branch');
-    branchSel.innerHTML = data?.length
+    const data = await apiGet('branches?is_active=eq.true&select=name&order=name').catch(() => []);
+    document.getElementById('reg-branch').innerHTML = data?.length
       ? data.map(b => `<option value="${b.name}">${b.name}</option>`).join('')
       : '<option value="Hội sở">Hội sở</option>';
-  } else {
-    bf.style.display = 'none';
-  }
+  } else { bf.style.display = 'none'; }
 }
 
 async function doLogin() {
@@ -1248,14 +1343,20 @@ async function doLogin() {
   if (!email || !pass) { showErr(err, 'Vui lòng nhập đầy đủ thông tin'); return; }
   btn.disabled = true; btn.textContent = 'Đang đăng nhập...';
   try {
-    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
-    if (error) {
+    const res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.access_token) {
       btn.disabled = false; btn.textContent = 'Đăng nhập →';
-      if (error.message?.includes('Invalid login')) showErr(err, 'Email hoặc mật khẩu không đúng');
-      else if (error.message?.includes('Email not confirmed')) showErr(err, 'Email chưa được xác nhận');
-      else showErr(err, 'Đăng nhập thất bại: ' + error.message);
+      const msg = data.error_description || data.msg || data.message || 'Đăng nhập thất bại';
+      showErr(err, msg.includes('Invalid') ? 'Email hoặc mật khẩu không đúng' : msg);
+      return;
     }
-    // Thành công → onAuthStateChange SIGNED_IN sẽ tự xử lý
+    saveSession(data.access_token, data.refresh_token, data.user);
+    await loadApp();
   } catch(e) {
     btn.disabled = false; btn.textContent = 'Đăng nhập →';
     showErr(err, 'Lỗi kết nối, vui lòng thử lại');
@@ -1277,110 +1378,80 @@ async function doRegister() {
   btn.disabled = true; btn.textContent = 'Đang tạo tài khoản...';
   const t = setTimeout(() => { btn.disabled=false; btn.textContent='Đăng ký →'; showErr(err,'Kết nối chậm, thử lại'); }, 10000);
   try {
-    const { error } = await sb.auth.signUp({ email, password: pass, options: { data: { full_name: name, department: dept, khoi } } });
+    const res = await fetch(SUPABASE_URL + '/auth/v1/signup', {
+      method: 'POST',
+      headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass, data: { full_name: name, department: dept, khoi } })
+    });
     clearTimeout(t); btn.disabled=false; btn.textContent='Đăng ký →';
-    if (error) { showErr(err, error.message); return; }
+    const data = await res.json();
+    if (!res.ok) { showErr(err, data.msg || data.message || 'Đăng ký thất bại'); return; }
     document.getElementById('register-form').style.display = 'none';
-    document.getElementById('pending-msg').style.display = 'block';
+    document.getElementById('pending-msg').style.display   = 'block';
   } catch(e) {
     clearTimeout(t); btn.disabled=false; btn.textContent='Đăng ký →';
     showErr(err,'Lỗi kết nối, thử lại');
   }
 }
 
-async function doLogout() {
-  if (notifChannel) sb.removeChannel(notifChannel);
-  if (realtimeChannel) sb.removeChannel(realtimeChannel);
-  await sb.auth.signOut();
+function doLogout() {
+  try { if (notifChannel) sb.removeChannel(notifChannel); } catch(_) {}
+  try { if (realtimeChannel) sb.removeChannel(realtimeChannel); } catch(_) {}
+  clearSession();
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('auth-screen').style.display    = 'flex';
+  document.getElementById('login-form').style.display     = 'block';
+  document.getElementById('register-form').style.display  = 'none';
+  document.getElementById('pending-msg').style.display    = 'none';
+  document.querySelectorAll('.auth-tab').forEach(t => t.style.display = '');
 }
 
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 
 // ═══════════════════════════════════════════════
-// INIT
+// INIT — đơn giản: đọc session từ localStorage
 // ═══════════════════════════════════════════════
-let _started = false;
-
-sb.auth.onAuthStateChange(async (event, session) => {
-  console.log('[Auth]', event, session?.user?.email ?? 'no session');
-
-  // F5: _started reset về false mỗi lần page load (biến JS luôn reset khi reload)
-  // Nên không cần lo _started=true còn sót từ lần trước
-
-  if (event === 'SIGNED_OUT') {
-    _started = false;
-    currentUser = null; currentProfile = null; currentSession = null;
+(async () => {
+  const sess = loadSession();
+  if (!sess) {
     document.getElementById('auth-screen').style.display = 'flex';
-    document.getElementById('app').classList.remove('visible');
-    document.getElementById('login-form').style.display = 'block';
-    document.getElementById('register-form').style.display = 'none';
-    document.getElementById('pending-msg').style.display = 'none';
-    document.querySelectorAll('.auth-tab').forEach(t => t.style.display = '');
     return;
   }
-
-  if (event === 'INITIAL_SESSION') {
-    if (session?.user && !_started) {
-      _started = true;
-      currentUser = session.user;
-      currentSession = session;
+  // Có session → thử dùng access_token hiện tại
+  _token = sess.access_token;
+  currentUser = sess.user;
+  // Thử load app, nếu token hết hạn thì refresh
+  const ok = await loadApp();
+  if (!ok) {
+    // Token hết hạn → refresh
+    const newToken = await refreshToken(sess.refresh_token);
+    if (newToken) {
       await loadApp();
-    } else if (!session) {
+    } else {
+      clearSession();
       document.getElementById('auth-screen').style.display = 'flex';
     }
-    return;
   }
-
-  if (event === 'SIGNED_IN' && session?.user && !_started) {
-    _started = true;
-    currentUser = session.user;
-    currentSession = session;
-    await loadApp();
-    return;
-  }
-
-  if (event === 'TOKEN_REFRESHED' && session) {
-    currentSession = session;
-    currentUser = session.user;
-    _token = session.access_token;
-    console.log('[Auth] Token refreshed');
-  }
-});
+})();
 
 async function loadApp() {
   const loginBtn = document.getElementById('btn-login');
   if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Đăng nhập →'; }
 
   try {
-    // Lấy session mới nhất, đồng thời set lại cho SDK để các query sau dùng đúng token
-    const { data: { session: latestSession } } = await sb.auth.getSession();
-    const sess = latestSession || currentSession;
-    _token = sess?.access_token || SUPABASE_KEY;
-    console.log('[loadApp] token:', _token === SUPABASE_KEY ? 'ANON(bad)' : 'USER(ok)');
-    const token = _token;
-    const res = await fetch(
-      SUPABASE_URL + '/rest/v1/profiles?id=eq.' + currentUser.id + '&select=*&limit=1',
-      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + token } }
-    );
-    const arr = await res.json();
+    const arr = await apiGet('profiles?id=eq.' + currentUser.id + '&select=*&limit=1');
     const profile = Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
-    console.log('[loadApp] profile:', profile?.full_name, '| approved:', profile?.is_approved);
 
-    if (!profile) {
-      _started = false;
-      await sb.auth.signOut();
-      return;
-    }
+    if (!profile) { clearSession(); document.getElementById('auth-screen').style.display = 'flex'; return false; }
 
     if (!profile.is_approved) {
-      _started = false;
-      await sb.auth.signOut();
-      document.getElementById('auth-screen').style.display = 'flex';
-      document.getElementById('login-form').style.display = 'none';
+      clearSession();
+      document.getElementById('auth-screen').style.display   = 'flex';
+      document.getElementById('login-form').style.display    = 'none';
       document.getElementById('register-form').style.display = 'none';
-      document.getElementById('pending-msg').style.display = 'block';
+      document.getElementById('pending-msg').style.display   = 'block';
       document.querySelectorAll('.auth-tab').forEach(t => t.style.display = 'none');
-      return;
+      return false;
     }
 
     currentProfile = profile;
@@ -1391,9 +1462,9 @@ async function loadApp() {
     document.getElementById('sidebar-name').textContent  = profile.full_name;
     document.getElementById('sidebar-dept').textContent  = profile.branch ? profile.branch + ' · ' + profile.department : profile.department;
     document.getElementById('sidebar-stars').textContent = (profile.total_stars || 0) + '★';
-    const topbarAv = document.getElementById('topbar-av');
+    const topbarAv    = document.getElementById('topbar-av');
     const topbarStars = document.getElementById('topbar-stars');
-    if (topbarAv) topbarAv.textContent = profile.avatar_text || '?';
+    if (topbarAv)    topbarAv.textContent    = profile.avatar_text || '?';
     if (topbarStars) topbarStars.textContent = (profile.total_stars || 0) + '★';
 
     if (profile.role === 'admin' || profile.role === 'manager') {
@@ -1412,18 +1483,21 @@ async function loadApp() {
 
     setupNotifSubscription();
     realtimeChannel = sb.channel('recognitions-feed')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'recognitions' }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'recognitions' }, payload => {
         prependPost(payload.new); updateTicker();
       }).subscribe();
     updateTicker();
+    return true;
 
   } catch(e) {
     console.error('[loadApp] crash:', e.message);
-    _started = false;
+    // Nếu 401 → token hết hạn, return false để caller refresh
+    if (e.message?.startsWith('401')) return false;
     document.getElementById('auth-screen').style.display = 'flex';
     document.getElementById('app').classList.remove('visible');
     const eEl = document.getElementById('login-err');
-    if (eEl) { eEl.textContent = '⚠️ Lỗi tải trang. Nhấn F5 để thử lại.'; eEl.style.display = 'block'; }
+    if (eEl) { eEl.textContent = '⚠️ Lỗi: ' + e.message; eEl.style.display = 'block'; }
+    return false;
   }
 }
 // ═══════════════════════════════════════════════
@@ -1466,12 +1540,7 @@ async function loadEmployees() {
 // QUOTA
 // ═══════════════════════════════════════════════
 async function loadQuota() {
-  const rpcRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_my_quota', {
-    method: 'POST',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_token||SUPABASE_KEY), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_user_id: currentUser.id })
-  }).catch(() => null);
-  const data = rpcRes ? await rpcRes.json() : null;
+  const data = await apiRpc('get_my_quota', {}).catch(() => null);
   if (!data) return;
   const used = data.used || 0;
   const max  = data.max  || 5;
@@ -1495,9 +1564,8 @@ async function loadFeed() {
   const fl = document.getElementById('fl');
   fl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
-  const arr = await sbGet('recognitions', 'select=*,from_profile:profiles!from_user_id(full_name,avatar_text,department),to_profile:profiles!to_user_id(full_name,avatar_text,department)&order=created_at.desc&limit=30');
-  const recs = Array.isArray(arr) ? arr : null;
-  const error = Array.isArray(arr) ? null : arr;
+  const recs = await apiGet('recognitions?select=*,from_profile:profiles!from_user_id(full_name,avatar_text,department),to_profile:profiles!to_user_id(full_name,avatar_text,department)&order=created_at.desc&limit=30').catch(() => null);
+  const error = null;
 
   if (error || !recs?.length) {
     fl.innerHTML = '<div class="empty-state"><div class="empty-icon">◈</div><div class="empty-txt">Chưa có lời cảm ơn nào</div><div style="font-size:12px;margin-top:8px;color:var(--text3)">Hãy là người đầu tiên ghi nhận đồng đội!</div></div>';
@@ -1563,12 +1631,7 @@ async function prependPost(r) {
 // MINI LEADERBOARD
 // ═══════════════════════════════════════════════
 async function loadMiniLeaderboard() {
-  const rpcRes = await fetch(SUPABASE_URL + '/rest/v1/rpc/get_leaderboard', {
-    method: 'POST',
-    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_token||SUPABASE_KEY), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_limit: 5 })
-  }).catch(() => null);
-  const data = rpcRes ? await rpcRes.json() : null;
+  const data = await apiRpc('get_leaderboard', { p_limit: 5 }).catch(() => null);
   const el = document.getElementById('mini-lb');
   if (!data?.length) { el.innerHTML = '<div class="empty-state" style="padding:20px"><div class="empty-txt">Chưa có dữ liệu</div></div>'; return; }
   el.innerHTML = data.map((p,i) => `
@@ -1865,8 +1928,9 @@ function selVal(el) {
   el.classList.add('sel');
 }
 function selStar(el) {
+  const already = el.classList.contains('sel');
   el.closest('div').querySelectorAll('.so').forEach(s => s.classList.remove('sel'));
-  el.classList.add('sel');
+  if (!already) el.classList.add('sel'); // click lại để bỏ chọn
 }
 
 // Image compression
@@ -1956,13 +2020,13 @@ async function submitPost() {
   }
 
   btn.textContent = 'Đang đăng...';
-  const { data, error } = await sb.rpc('give_stars', {
-    p_to_user_id: toId,
-    p_stars:      stars,
-    p_message:    msg,
-    p_value_tag:  val,
-    p_image_url:  imageUrl
-  });
+  let data = null, error = null;
+  try {
+    data = await apiRpc('give_stars', {
+      p_to_user_id: toId, p_stars: stars,
+      p_message: msg, p_value_tag: val, p_image_url: imageUrl
+    });
+  } catch(e) { error = e; }
 
   btn.disabled = false; btn.textContent = 'Đăng ngay →';
 
@@ -1971,7 +2035,6 @@ async function submitPost() {
     return;
   }
 
-  // Fraud warning
   if (data?.fraud_warning?.flagged) {
     toast('⚠️ Bài đăng bị gắn cờ kiểm tra gian lận!');
   } else {
@@ -1995,17 +2058,18 @@ async function sendGift() {
   const btn   = document.getElementById('btn-give');
   btn.disabled = true; btn.textContent = 'Đang gửi...';
 
-  const { data, error } = await sb.rpc('give_stars', {
-    p_to_user_id: toId,
-    p_stars:      stars,
-    p_message:    msg || `Cảm ơn bạn! +${stars}★`,
-    p_value_tag:  'teamwork'
-  });
+  let data = null, gErr = null;
+  try {
+    data = await apiRpc('give_stars', {
+      p_to_user_id: toId, p_stars: stars,
+      p_message: msg || `Cảm ơn bạn! +${stars}★`, p_value_tag: 'teamwork'
+    });
+  } catch(e) { gErr = e; }
 
   btn.disabled = false; btn.textContent = 'Gửi ngay →';
 
-  if (error || data?.error) {
-    toast('❌ ' + (data?.error || error?.message));
+  if (gErr || data?.error) {
+    toast('❌ ' + (data?.error || gErr?.message));
     return;
   }
 
@@ -2017,19 +2081,18 @@ async function sendGift() {
 
 // Like
 async function toggleLike(recId, btn) {
-  const { data: existing } = await sb.from('recognition_likes').select('id').eq('recognition_id', recId).eq('user_id', currentUser.id).single();
+  const arr = await apiGet('recognition_likes?recognition_id=eq.' + recId + '&user_id=eq.' + currentUser.id + '&select=id&limit=1').catch(() => []);
+  const existing = arr?.[0];
   const m = btn.textContent.match(/(\d+)/);
   const n = parseInt(m?.[0] || '0');
   if (existing) {
-    await sb.from('recognition_likes').delete().eq('id', existing.id);
-    await sb.from('recognitions').update({ like_count: n - 1 }).eq('id', recId);
-    btn.textContent = `Thích · ${n - 1}`;
-    btn.classList.remove('liked');
+    await api('DELETE', 'recognition_likes?id=eq.' + existing.id);
+    await api('PATCH', 'recognitions?id=eq.' + recId, { like_count: n - 1 });
+    btn.textContent = `Thích · ${n - 1}`; btn.classList.remove('liked');
   } else {
-    await sb.from('recognition_likes').insert({ recognition_id: recId, user_id: currentUser.id });
-    await sb.from('recognitions').update({ like_count: n + 1 }).eq('id', recId);
-    btn.textContent = `Thích · ${n + 1}`;
-    btn.classList.add('liked');
+    await api('POST', 'recognition_likes', { recognition_id: recId, user_id: currentUser.id });
+    await api('PATCH', 'recognitions?id=eq.' + recId, { like_count: n + 1 });
+    btn.textContent = `Thích · ${n + 1}`; btn.classList.add('liked');
   }
 }
 
@@ -2255,7 +2318,7 @@ async function checkPendingOnLoad() {
 // ADMIN TABS
 // ═══════════════════════════════════════════════
 function adminTab(name, el) {
-  const sections = ['pending','employees','depts','logo','admins','flags','fraud','history'];
+  const sections = ['pending','employees','depts','logo','admins','flags','fraud','history','rewards'];
   sections.forEach(s => {
     const el2 = document.getElementById('admin-section-' + s);
     if (el2) el2.style.display = 'none';
@@ -2271,6 +2334,7 @@ function adminTab(name, el) {
   if (name === 'flags')     loadFlags();
   if (name === 'fraud')     loadFraudDashboard();
   if (name === 'history')   loadHistory();
+  if (name === 'rewards')   loadRewardsAdmin();
 }
 
 // ═══════════════════════════════════════════════
@@ -2677,9 +2741,9 @@ async function loadAdminList() {
 // Load logo on startup
 async function loadLogo() {
   try {
-    const { data } = await sb.from('app_settings').select('value').eq('key', 'logo_url').single();
-    if (data?.value) applyLogo(data.value);
-  } catch(e) { console.warn('loadLogo error:', e); }
+    const arr = await apiGet('app_settings?key=eq.logo_url&select=value&limit=1');
+    if (arr?.[0]?.value) applyLogo(arr[0].value);
+  } catch(e) {}
 }
 
 function applyLogo(url) {
@@ -2836,7 +2900,13 @@ async function changePassword() {
     err.textContent = 'Kết nối chậm, vui lòng thử lại'; err.style.display='block';
   }, 8000);
   try {
-    const { error } = await sb.auth.updateUser({ password: np });
+    const pwRes = await fetch(SUPABASE_URL + '/auth/v1/user', {
+    method: 'PUT',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + (_token||SUPABASE_KEY), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: np })
+  });
+  const pwData = await pwRes.json();
+  const error = pwRes.ok ? null : { message: pwData.msg || pwData.message || 'Lỗi đổi mật khẩu' };
     clearTimeout(timeout3);
     btn.disabled = false; btn.textContent = 'Đổi mật khẩu →';
     if (error) { err.textContent = error.message; err.style.display='block'; return; }
@@ -2887,8 +2957,8 @@ async function loadStore() {
   document.getElementById('store-reputation').textContent = rep + '★';
 
   // Load rewards từ Supabase
-  const { data, error } = await sb.from('rewards').select('*').eq('is_active', true).order('points_required');
-  if (error || !data?.length) {
+  const data = await apiGet('rewards?is_active=eq.true&order=points_required').catch(() => null);
+  if (!data?.length) {
     // Fallback hardcoded nếu chưa chạy SQL patch
     storeRewards = [
       { id:'r1', name:'Voucher Free Trà Cam Xí Muội',    description:'1 ly Trà Cam Xí Muội miễn phí',          category:'drink_voucher', points_required:50,  expiry_days:7,    emoji:'🍊' },
@@ -2990,9 +3060,7 @@ function confirmRedeem(rewardId, cost) {
 async function doRedeem(rewardId) {
   toast('⏳ Đang xử lý...');
   try {
-    // Gọi RPC function trong Supabase
-    const { data, error } = await sb.rpc('redeem_reward', { p_reward_id: rewardId });
-    if (error) throw error;
+    const data = await apiRpc('redeem_reward', { p_reward_id: rewardId });
     if (data?.error) { toast('❌ ' + data.error); return; }
 
     // Thành công - hiện voucher code
@@ -3040,13 +3108,8 @@ async function loadRedemptionHistory() {
   const el = document.getElementById('redemption-history-list');
   if (!el) return;
 
-  const { data, error } = await sb.from('redemptions')
-    .select('*, reward:rewards(name, category)')
-    .eq('user_id', currentUser.id)
-    .order('created_at', { ascending: false })
-    .limit(20);
-
-  if (error || !data?.length) {
+  const data = await apiGet('redemptions?user_id=eq.' + currentUser.id + '&select=*,reward:rewards(name,category)&order=created_at.desc&limit=20').catch(() => null);
+  if (!data?.length) {
     el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3)"><div style="font-size:32px;margin-bottom:10px">📋</div><div>Chưa có lịch sử đổi quà</div></div>';
     return;
   }
@@ -3171,6 +3234,208 @@ Tone: chuyên nghiệp, gần gũi, dựa vào số liệu thực. Không nói c
     box.innerHTML = '<div style="color:var(--red)">❌ Lỗi kết nối AI. Vui lòng thử lại.</div>';
   }
   btn.disabled=false; btn.textContent='◈ Tạo báo cáo mới';
+}
+
+
+// ═══════════════════════════════════════════════
+// REWARDS ADMIN
+// ═══════════════════════════════════════════════
+async function loadRewardsAdmin() {
+  await Promise.all([loadRewardsList(), loadRedemptionsList()]);
+}
+
+async function loadRewardsList() {
+  const el = document.getElementById('rewards-admin-list');
+  if (!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  const data = await apiGet('rewards?order=points_required&select=*').catch(() => []);
+
+  if (!data?.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3)">Chưa có phần thưởng nào. Thêm phần thưởng đầu tiên!</div>';
+    return;
+  }
+
+  const catLabel = { drink_voucher: '☕ Đồ uống', merchandise: '🎁 Tặng phẩm', privilege: '⭐ Quyền lợi' };
+
+  el.innerHTML = data.map(r => `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px;border-bottom:1px solid var(--border-soft);${!r.is_active ? 'opacity:0.5' : ''}">
+      <div style="font-size:28px;min-width:40px;text-align:center">${r.emoji || '🎁'}</div>
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:14px">${r.name}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">${r.description || ''}</div>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;background:var(--gold);color:#fff;padding:2px 8px">${r.points_required}★</span>
+          <span style="font-size:10px;background:var(--bg2);padding:2px 8px;border:1px solid var(--border-soft)">${catLabel[r.category] || r.category}</span>
+          ${r.expiry_days ? `<span style="font-size:10px;background:var(--bg2);padding:2px 8px;border:1px solid var(--border-soft)">⏳ ${r.expiry_days} ngày</span>` : ''}
+          <span style="font-size:10px;padding:2px 8px;border:1px solid var(--border-soft);color:${r.is_active ? 'green' : 'var(--red)'}">${r.is_active ? '● Đang bán' : '○ Ẩn'}</span>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:80px">
+        <button class="btn" style="font-size:11px;padding:5px 10px" onclick="editReward('${r.id}','${r.name.replace(/'/g,"\'")}','${r.description?.replace(/'/g,"\'")||''}','${r.category}',${r.points_required},${r.expiry_days||''},${r.is_active},'${r.emoji||'🎁'}')">✏️ Sửa</button>
+        <button class="btn" style="font-size:11px;padding:5px 10px;background:${r.is_active?'#fee':'#efe'}" onclick="toggleReward('${r.id}',${r.is_active})">${r.is_active ? '🚫 Ẩn' : '✅ Hiện'}</button>
+        <button class="btn" style="font-size:11px;padding:5px 10px;background:#fee;color:var(--red)" onclick="deleteReward('${r.id}','${r.name.replace(/'/g,"\'")}')">🗑️ Xoá</button>
+      </div>
+    </div>`).join('');
+}
+
+async function addReward() {
+  const name   = document.getElementById('rw-name').value.trim();
+  const desc   = document.getElementById('rw-desc').value.trim();
+  const cat    = document.getElementById('rw-cat').value;
+  const points = parseInt(document.getElementById('rw-points').value);
+  const expiry = parseInt(document.getElementById('rw-expiry').value) || null;
+  const emoji  = document.getElementById('rw-emoji').value.trim() || '🎁';
+
+  if (!name)          { toast('Vui lòng nhập tên phần thưởng'); return; }
+  if (!points || points < 1) { toast('Vui lòng nhập số điểm hợp lệ'); return; }
+
+  try {
+    await api('POST', 'rewards', { name, description: desc, category: cat, points_required: points, expiry_days: expiry, emoji, is_active: true });
+    toast('✅ Đã thêm phần thưởng: ' + name);
+    // Reset form
+    ['rw-name','rw-desc','rw-points','rw-expiry'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('rw-emoji').value = '🎁';
+    await loadRewardsList();
+    await loadStore(); // refresh store cho user
+  } catch(e) {
+    toast('❌ Lỗi: ' + e.message);
+  }
+}
+
+function editReward(id, name, desc, cat, points, expiry, isActive, emoji) {
+  // Điền lại form để sửa
+  document.getElementById('rw-name').value   = name;
+  document.getElementById('rw-desc').value   = desc;
+  document.getElementById('rw-cat').value    = cat;
+  document.getElementById('rw-points').value = points;
+  document.getElementById('rw-expiry').value = expiry || '';
+  document.getElementById('rw-emoji').value  = emoji;
+
+  // Đổi nút thành "Cập nhật"
+  const btn = document.querySelector('[onclick="addReward()"]');
+  if (btn) {
+    btn.textContent = '💾 Cập nhật phần thưởng';
+    btn.onclick = async () => {
+      const updName   = document.getElementById('rw-name').value.trim();
+      const updDesc   = document.getElementById('rw-desc').value.trim();
+      const updCat    = document.getElementById('rw-cat').value;
+      const updPoints = parseInt(document.getElementById('rw-points').value);
+      const updExpiry = parseInt(document.getElementById('rw-expiry').value) || null;
+      const updEmoji  = document.getElementById('rw-emoji').value.trim() || '🎁';
+      if (!updName || !updPoints) { toast('Vui lòng nhập đầy đủ'); return; }
+      try {
+        await api('PATCH', 'rewards?id=eq.' + id, { name: updName, description: updDesc, category: updCat, points_required: updPoints, expiry_days: updExpiry, emoji: updEmoji });
+        toast('✅ Đã cập nhật: ' + updName);
+        ['rw-name','rw-desc','rw-points','rw-expiry'].forEach(id2 => document.getElementById(id2).value = '');
+        document.getElementById('rw-emoji').value = '🎁';
+        btn.textContent = '+ Thêm phần thưởng';
+        btn.onclick = addReward;
+        await loadRewardsList();
+        await loadStore();
+      } catch(e) { toast('❌ ' + e.message); }
+    };
+  }
+  // Scroll lên form
+  document.getElementById('rw-name').scrollIntoView({ behavior: 'smooth' });
+  toast('📝 Đang sửa: ' + name);
+}
+
+async function toggleReward(id, isActive) {
+  try {
+    await api('PATCH', 'rewards?id=eq.' + id, { is_active: !isActive });
+    toast(isActive ? '🚫 Đã ẩn phần thưởng' : '✅ Đã hiện phần thưởng');
+    await loadRewardsList();
+    await loadStore();
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+async function deleteReward(id, name) {
+  if (!confirm('Xoá phần thưởng "' + name + '"? Không thể hoàn tác.')) return;
+  try {
+    await api('DELETE', 'rewards?id=eq.' + id);
+    toast('🗑️ Đã xoá: ' + name);
+    await loadRewardsList();
+    await loadStore();
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+async function loadRedemptionsList() {
+  const el = document.getElementById('redemptions-admin-list');
+  if (!el) return;
+  el.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+
+  const data = await apiGet('redemptions?select=*,reward:rewards(name,category),user:profiles(full_name,department)&order=created_at.desc&limit=50').catch(() => []);
+
+  if (!data?.length) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3)">Chưa có lượt đổi quà nào</div>';
+    return;
+  }
+
+  const statusColor = { pending: '#f59e0b', fulfilled: 'green', cancelled: 'var(--red)' };
+  const statusLabel = { pending: '⏳ Chờ xử lý', fulfilled: '✅ Đã trao', cancelled: '❌ Đã huỷ' };
+
+  el.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="background:var(--bg2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">
+        <th style="padding:8px;text-align:left">Nhân viên</th>
+        <th style="padding:8px;text-align:left">Phần thưởng</th>
+        <th style="padding:8px;text-align:left">Mã voucher</th>
+        <th style="padding:8px;text-align:left">Thời gian</th>
+        <th style="padding:8px;text-align:center">Trạng thái</th>
+        <th style="padding:8px;text-align:center">Hành động</th>
+      </tr></thead>
+      <tbody>
+        ${data.map(r => `
+          <tr style="border-bottom:1px solid var(--border-soft)">
+            <td style="padding:8px">
+              <div style="font-weight:600">${r.user?.full_name || '?'}</div>
+              <div style="font-size:11px;color:var(--text3)">${r.user?.department || ''}</div>
+            </td>
+            <td style="padding:8px">${r.reward?.name || r.reward_id}</td>
+            <td style="padding:8px;font-family:monospace;font-size:12px;font-weight:700;color:var(--gold)">${r.voucher_code || '—'}</td>
+            <td style="padding:8px;font-size:11px;color:var(--text3)">${new Date(r.created_at).toLocaleDateString('vi-VN')}</td>
+            <td style="padding:8px;text-align:center">
+              <span style="font-size:11px;font-weight:700;color:${statusColor[r.status]||'var(--text2)'}">${statusLabel[r.status]||r.status}</span>
+            </td>
+            <td style="padding:8px;text-align:center">
+              ${r.status === 'pending' ? `
+                <button class="btn" style="font-size:11px;padding:4px 8px;background:#efe;margin-bottom:4px" onclick="fulfillRedemption('${r.id}')">✅ Đã trao</button>
+                <button class="btn" style="font-size:11px;padding:4px 8px;background:#fee;color:var(--red)" onclick="cancelRedemption('${r.id}',${r.points_spent})">❌ Huỷ</button>
+              ` : '—'}
+            </td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function fulfillRedemption(id) {
+  try {
+    await api('PATCH', 'redemptions?id=eq.' + id, { status: 'fulfilled' });
+    toast('✅ Đã đánh dấu trao quà');
+    await loadRedemptionsList();
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+async function cancelRedemption(id, pointsSpent) {
+  if (!confirm('Huỷ lượt đổi quà này và hoàn lại điểm cho nhân viên?')) return;
+  try {
+    await api('PATCH', 'redemptions?id=eq.' + id, { status: 'cancelled' });
+    // Hoàn điểm
+    await apiRpc('refund_redemption', { p_redemption_id: id });
+    toast('✅ Đã huỷ và hoàn điểm');
+    await loadRedemptionsList();
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+async function searchVoucher() {
+  const q = document.getElementById('voucher-search').value.trim().toLowerCase();
+  const el = document.getElementById('redemptions-admin-list');
+  if (!el) return;
+  const rows = el.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
 }
 
 // Enter key for login
