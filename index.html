@@ -1362,6 +1362,7 @@ async function loadBranchesForRegister() {
 // branches loaded on demand when user selects Chi nhánh
 
 let appLoaded = false;
+let appLoading = false; // Guard chống gọi loadApp() đồng thời
 
 // ── INIT: Check session ngay khi load (cách đáng tin cậy nhất) ──
 (async () => {
@@ -1405,29 +1406,49 @@ sb.auth.onAuthStateChange(async (event, session) => {
 });
 
 async function loadApp() {
+  // Guard chống gọi đồng thời
+  if (appLoading) { console.log('⚠️ loadApp already running, skip'); return; }
+  appLoading = true;
   console.log('🔵 loadApp() START, user:', currentUser?.email);
   const loginBtn = document.getElementById('btn-login');
   if (loginBtn) { loginBtn.disabled = false; loginBtn.textContent = 'Đăng nhập →'; }
 
   try {
-    console.log('🔵 Fetching profile...');
-    // Dùng REST API trực tiếp với Authorization header để tránh RLS treo
+    console.log('🔵 Fetching profile for:', currentUser.id);
+    // Lấy access token từ Supabase storage trực tiếp (không gọi getSession() để tránh loop)
     let profile = null, profileErr = null;
     try {
-      const { data: { session: currentSession } } = await sb.auth.getSession();
-      const token = currentSession?.access_token;
+      // Đọc token từ localStorage trực tiếp - không trigger thêm auth events
+      let token = SUPABASE_KEY; // fallback anon key
+      try {
+        // Thử nhiều key có thể có
+        const keys = ['sw-auth', 'sb-zkdothuvthxenonehnyj-auth-token', 'supabase.auth.token'];
+        for (const key of keys) {
+          const stored = localStorage.getItem(key);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            const t = parsed?.access_token || parsed?.session?.access_token || parsed?.currentSession?.access_token;
+            if (t) { token = t; console.log('🔵 Token from key:', key); break; }
+          }
+        }
+      } catch(_) {}
+      
+      console.log('🔵 Using token:', token === SUPABASE_KEY ? 'anon' : 'user');
       const res = await fetch(
         SUPABASE_URL + '/rest/v1/profiles?id=eq.' + currentUser.id + '&select=*&limit=1',
         { headers: {
             'apikey': SUPABASE_KEY,
-            'Authorization': 'Bearer ' + (token || SUPABASE_KEY),
+            'Authorization': 'Bearer ' + token,
             'Content-Type': 'application/json'
         }}
       );
       const arr = await res.json();
-      if (arr && arr.length > 0) profile = arr[0];
-      else profileErr = { message: 'Profile not found', code: 'NOT_FOUND' };
+      console.log('🔵 Profile fetch response:', arr);
+      if (Array.isArray(arr) && arr.length > 0) profile = arr[0];
+      else if (Array.isArray(arr) && arr.length === 0) profileErr = { message: 'Profile not found', code: 'NOT_FOUND' };
+      else profileErr = { message: JSON.stringify(arr) };
     } catch(fetchErr) {
+      console.error('🔵 Fetch error:', fetchErr.message);
       profileErr = { message: fetchErr.message };
     }
     console.log('🔵 Profile result:', profile?.full_name, 'error:', profileErr?.message);
@@ -1477,6 +1498,7 @@ async function loadApp() {
     }
 
     console.log('✅ Showing app, hiding auth-screen');
+    appLoading = false;
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').classList.add('visible');
 
@@ -1520,6 +1542,7 @@ async function loadApp() {
   } catch(e) {
     console.error('❌ loadApp CRASH:', e.message, e.stack);
     appLoaded = false;
+    appLoading = false;
     if (e.message === 'PROFILE_TIMEOUT') {
       // Supabase bị treo → reload trang tự động
       console.log('⏱ Profile timeout → reload page');
