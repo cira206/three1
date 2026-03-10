@@ -429,6 +429,66 @@ textarea.inf { resize:none; min-height:74px; }
   /* Tặng sao button - smaller on mobile */
   .topbar .btn { padding:6px 10px; font-size:10px; }
 }
+
+.desktop-only { display:inline-flex; }
+.mobile-only  { display:none; }
+@media (max-width:768px) {
+  .desktop-only { display:none !important; }
+  .mobile-only  { display:inline-flex !important; }
+}
+
+/* ── MOBILE TOPBAR FIX ── */
+@media (max-width:768px) {
+  /* Topbar gọn hơn */
+  .topbar { padding:0 10px; gap:6px; justify-content:space-between; }
+  .topbar-title { font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+
+  /* Ẩn live pill trên mobile */
+  .live-pill { display:none !important; }
+
+  /* Bottom nav cải thiện */
+  .sidebar {
+    position:fixed !important;
+    bottom:0; left:0; right:0;
+    z-index:50;
+    background:#FFF;
+    height:56px !important;
+    padding:0 !important;
+    box-shadow:0 -2px 0 var(--black);
+  }
+  .nav {
+    height:100%;
+    padding:0 !important;
+    align-items:stretch;
+    justify-content:space-around;
+  }
+  .ni {
+    flex:1;
+    min-width:0 !important;
+    padding:5px 4px 6px !important;
+    border-bottom:none !important;
+    border-right:none !important;
+    font-size:8px !important;
+    letter-spacing:0 !important;
+    max-width:80px;
+  }
+  .ni.active {
+    background:var(--black) !important;
+    color:#FFF !important;
+  }
+  .ni-icon { font-size:17px !important; line-height:1; }
+  .ni-short { font-size:8px !important; margin-top:1px; }
+
+  /* Main content đẩy lên tránh bottom nav */
+  .main { height:calc(100vh - 56px); overflow:hidden; }
+  .page { padding-bottom:72px !important; }
+
+  /* App layout */
+  #app { flex-direction:column; height:100vh; }
+  .sidebar { order:2; }
+  .main { order:1; flex:1; }
+}
+
 </style>
 </head>
 <body>
@@ -563,9 +623,12 @@ textarea.inf { resize:none; min-height:74px; }
           <span style="font-size:14px">🔔</span>
           <span id="notif-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:var(--red);color:#FFF;font-size:9px;font-weight:800;padding:2px 5px;min-width:16px;text-align:center">0</span>
         </div>
-        <button class="btn btn-outline" onclick="openGiveModal()">★ Tặng sao</button>
-        <button class="btn btn-black" onclick="openCompose()">+ Đăng cảm ơn</button>
-        <button class="btn btn-outline" onclick="doLogout()">Đăng xuất</button>
+        <button class="btn btn-outline desktop-only" onclick="openGiveModal()">★ Tặng sao</button>
+        <button class="btn btn-black desktop-only" onclick="openCompose()">+ Đăng cảm ơn</button>
+        <button class="btn btn-outline desktop-only" onclick="doLogout()">Đăng xuất</button>
+        <button class="btn btn-outline mobile-only" onclick="openGiveModal()" style="padding:6px 10px;font-size:13px">★</button>
+        <button class="btn btn-black mobile-only" onclick="openCompose()" style="padding:6px 10px;font-size:11px">+</button>
+        <button class="btn btn-outline mobile-only" onclick="doLogout()" style="padding:6px 8px;font-size:10px">Out</button>
       </div>
       <!-- NOTIFICATION PANEL -->
       <div id="notif-panel" style="display:none;position:absolute;top:57px;right:16px;width:340px;background:#FFF;border:2px solid var(--black);z-index:90;max-height:420px;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.12)">
@@ -1297,7 +1360,8 @@ let appLoaded = false;
 sb.auth.onAuthStateChange(async (event, session) => {
   console.log('[Auth]', event, session?.user?.email);
 
-  if (event === 'SIGNED_OUT' || !session) {
+  // SIGNED_OUT thực sự (do logout, không phải do refresh page)
+  if (event === 'SIGNED_OUT') {
     appLoaded = false;
     currentUser = null;
     currentProfile = null;
@@ -1306,7 +1370,13 @@ sb.auth.onAuthStateChange(async (event, session) => {
     return;
   }
 
-  // Chỉ load app 1 lần khi có session hợp lệ
+  // INITIAL_SESSION không có session = chưa đăng nhập -> show login
+  if (event === 'INITIAL_SESSION' && !session) {
+    document.getElementById('auth-screen').style.display = 'flex';
+    return;
+  }
+
+  // Có session hợp lệ -> load app (nếu chưa load)
   if (session?.user && !appLoaded) {
     appLoaded = true;
     currentUser = session.user;
