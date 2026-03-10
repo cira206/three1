@@ -2142,7 +2142,7 @@ function renderEmployeesTable(list) {
       <td style="font-weight:800;color:var(--gold)">${e.total_stars||0}★</td>
       <td><span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;background:${e.role==='admin'?'var(--gold)':'var(--bg2)'};color:${e.role==='admin'?'#FFF':'var(--text2)'};border:1px solid ${e.role==='admin'?'var(--gold)':'var(--border-soft)'}">${e.role}</span></td>
       <td onclick="event.stopPropagation()">
-        <button class="btn btn-red" style="padding:3px 8px;font-size:10px" onclick="deleteEmployee('${e.id}','${esc(e.full_name)}')">Xóa</button>
+        ${(e.role !== 'admin' && e.role !== 'manager' && e.id !== currentUser?.id) ? `<button class="btn btn-red" style="padding:3px 8px;font-size:10px" onclick="deleteEmployee('${e.id}','${esc(e.full_name)}')">Xóa</button>` : ''}
       </td>
     </tr>`).join('');
 }
@@ -2160,7 +2160,14 @@ async function viewEmployee(uid) {
   document.getElementById('emp-email').textContent = emp.email;
   document.getElementById('emp-stars').textContent = (emp.total_stars||0) + '★';
   document.getElementById('emp-posts').textContent = emp.post_count||0;
-  document.getElementById('emp-delete-btn').setAttribute('onclick', `deleteEmployee('${uid}','${esc(emp.full_name)}')`);
+  // Ẩn nút Xóa nếu là admin hoặc chính mình
+  const delBtn = document.getElementById('emp-delete-btn');
+  if (emp.role === 'admin' || emp.role === 'manager' || uid === currentUser?.id) {
+    delBtn.style.display = 'none';
+  } else {
+    delBtn.style.display = '';
+    delBtn.setAttribute('onclick', `deleteEmployee('${uid}','${esc(emp.full_name)}')`);
+  }
 
   // Get rank
   const { data: lb } = await sb.rpc('get_leaderboard', { p_limit: 200 });
@@ -2198,8 +2205,18 @@ function closeEmpModal() {
 
 async function deleteEmployee(uid, name) {
   if (!confirm(`Xóa tài khoản "${name}"?\nHành động này không thể hoàn tác!`)) return;
-  await sb.rpc('reject_user', { p_user_id: uid });
-  toast('🗑 Đã xóa tài khoản ' + name);
+  // Không cho xóa admin hoặc chính mình
+  const target = allEmployees?.find(e => e.id === uid);
+  if (target?.role === 'admin' || target?.role === 'manager') {
+    toast('❌ Không thể vô hiệu hóa tài khoản Admin'); return;
+  }
+  if (uid === currentUser?.id) {
+    toast('❌ Không thể xóa tài khoản đang đăng nhập'); return;
+  }
+  // Deactivate (set is_approved=false) thay vì xóa hẳn -> admin không bị logout
+  const { data, error } = await sb.from('profiles').update({ is_approved: false }).eq('id', uid);
+  if (error) { toast('❌ Lỗi: ' + error.message); return; }
+  toast('🗑 Đã vô hiệu hóa tài khoản ' + name);
   closeEmpModal();
   loadEmployeesList();
   loadAdmin();
