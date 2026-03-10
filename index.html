@@ -2723,8 +2723,14 @@ async function sendApprovalEmailDirect(email, name) {
 
 
 async function approveUser(uid, name, email) {
-  const { data } = await sb.rpc('approve_user', { p_user_id: uid });
-  if (data?.error) { toast('❌ ' + data.error); return; }
+  try {
+    const res = await fetch('https://zkdothuvthxenonehnyj.supabase.co/rest/v1/profiles?id=eq.' + uid, {
+      method: 'PATCH',
+      headers: { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZG90aHV2dGh4ZW5vbmVobnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTgxMTAsImV4cCI6MjA4ODUzNDExMH0.O4xPbe07-8d0VDUmpt1UukIsN-tEeLbdK9EHUYctSHs', 'Authorization': 'Bearer ' + (_token || ''), 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ is_approved: true })
+    });
+    if (!res.ok) { const t = await res.text(); toast('❌ ' + res.status + ': ' + t.slice(0,60)); return; }
+  } catch(e) { toast('❌ ' + e.message); return; }
   // Gửi email thông báo
   if (email) {
     const sent = await sendApprovalEmail(email, name);
