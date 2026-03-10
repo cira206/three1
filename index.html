@@ -1582,6 +1582,25 @@ async function doRegister() {
     if (!res.ok) { showErr(err, data.msg || data.message || 'Đăng ký thất bại'); return; }
     document.getElementById('register-form').style.display = 'none';
     document.getElementById('pending-msg').style.display   = 'block';
+    // Thông báo admin có người mới đăng ký
+    try {
+      await fetch(SUPABASE_URL + '/rest/v1/admin_notifications', {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          type: 'new_signup',
+          title: '👤 Thành viên mới đăng ký',
+          body: name + ' (' + email + ') · ' + dept,
+          actor_name: name,
+          extra: { email, department: dept, khoi }
+        })
+      });
+    } catch(_) {}
   } catch(e) {
     clearTimeout(t); btn.disabled=false; btn.textContent='Đăng ký →';
     showErr(err,'Lỗi kết nối, thử lại');
