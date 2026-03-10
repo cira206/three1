@@ -517,13 +517,13 @@ textarea.inf { resize:none; min-height:74px; }
 @media (max-width:768px) {
   .sidebar {
     position:fixed; bottom:0; left:0; right:0; top:auto;
-    width:100%; height:auto;
+    width:100%; height:62px;
     flex-direction:row;
-    border-right:none; border-top:1.5px solid var(--black);
+    border-right:none;
+    border-top:none;
     padding:0; z-index:50;
-    background:#fff;
-    overflow-x:auto;
-    box-shadow: 0 -2px 16px rgba(0,0,0,.10);
+    background:#111;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.25);
   }
   .sidebar > *:not(.nav) { display:none !important; }
   .nav {
@@ -541,24 +541,24 @@ textarea.inf { resize:none; min-height:74px; }
     align-items:center;
     justify-content:center;
     flex:1;
-    min-width:48px;
-    padding:8px 4px 10px;
+    min-width:44px;
+    padding:6px 2px 8px;
     border-left:none !important;
-    border-top:2px solid transparent;
+    border-top:2.5px solid transparent;
     border-radius:0;
     margin-bottom:0;
     gap:3px;
-    color:var(--text3);
+    color:rgba(255,255,255,0.45);
+    transition: all .15s;
   }
   .ni.active {
-    background:#fff !important;
-    color:var(--black) !important;
-    border-top:2px solid var(--black) !important;
-    font-weight:800;
+    background:#111 !important;
+    color:#fff !important;
+    border-top:2.5px solid var(--gold) !important;
   }
-  .ni:hover { background:#f5f5f5; }
-  .ni-icon { font-size:19px !important; line-height:1; }
-  .ni-short { font-size:9px !important; font-weight:700 !important; letter-spacing:.02em; color:inherit; }
+  .ni:hover { color:rgba(255,255,255,0.8); }
+  .ni-icon { font-size:18px !important; line-height:1; }
+  .ni-short { font-size:8.5px !important; font-weight:700 !important; letter-spacing:.04em; color:inherit; text-transform:uppercase; }
   .ni-full { display:none !important; }
   .sidebar-user { display:none !important; }
   .main-area { margin-left:0; padding-bottom:72px; }
@@ -738,8 +738,8 @@ textarea.inf { resize:none; min-height:74px; }
   <!-- MAIN -->
   <div class="main">
     <header class="topbar">
-      <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="go('feed')">
-        <img id="topbar-logo" src="" alt="Logo" style="height:32px;width:32px;object-fit:contain;border-radius:4px;display:none">
+      <div style="display:flex;align-items:center;gap:10px">
+        <img id="topbar-logo" src="" alt="Logo" style="height:34px;width:34px;object-fit:contain;border-radius:4px;display:none;cursor:pointer" onclick="go('feed')">
         <div class="topbar-title" id="page-title">Trang Chủ</div>
       </div>
       <div class="mobile-user-chip" onclick="go('profile')" style="display:none;align-items:center;gap:6px;cursor:pointer">
@@ -1459,9 +1459,14 @@ function applyLogoEarly(url) {
     img.style.cssText = 'width:44px;height:44px;object-fit:contain;border-radius:4px';
     el.replaceWith(img);
   });
-  // Topbar logo
+  // Topbar logo - ẩn page title khi có logo
   const topbarLogo = document.getElementById('topbar-logo');
-  if (topbarLogo) { topbarLogo.src = url; topbarLogo.style.display = 'block'; }
+  if (topbarLogo) {
+    topbarLogo.src = url;
+    topbarLogo.style.display = 'block';
+    const pt = document.getElementById('page-title');
+    if (pt) pt.style.display = 'none';
+  }
 }
 
 // ═══════════════════════════════════════════════
