@@ -2023,24 +2023,40 @@ async function submitPost() {
   btn.textContent = 'Đang đăng...';
   let data = null, error = null;
   try {
-    data = await apiRpc('give_stars', {
-      p_to_user_id: toId, p_stars: stars,
-      p_message: msg, p_value_tag: val, p_image_url: imageUrl
+    if (toId === currentUser.id) throw new Error('Không thể tự tặng sao cho mình');
+    // Kiểm tra quota
+    const quotaRes = await apiGet('recognitions?from_user_id=eq.' + currentUser.id + '&select=stars&created_at=gte.' + new Date().toISOString().slice(0,10));
+    const usedToday = Array.isArray(quotaRes) ? quotaRes.reduce((s,r) => s + (r.stars||0), 0) : 0;
+    if (usedToday + stars > 5) throw new Error('Không đủ quota. Còn lại: ' + (5 - usedToday) + '★ hôm nay');
+    // INSERT recognition
+    await api('POST', 'recognitions', {
+      from_user_id: currentUser.id,
+      to_user_id: toId,
+      stars: stars,
+      message: msg,
+      value_tag: val,
+      image_url: imageUrl
     });
+    // Cộng điểm người nhận
+    const recvProfile = await apiGet('profiles?id=eq.' + toId + '&select=total_stars,redeemable_points,reputation_points&limit=1');
+    if (recvProfile?.[0]) {
+      const p = recvProfile[0];
+      await api('PATCH', 'profiles?id=eq.' + toId, {
+        total_stars: (p.total_stars||0) + stars,
+        redeemable_points: (p.redeemable_points||0) + stars,
+        reputation_points: (p.reputation_points||0) + stars
+      });
+    }
+    data = { success: true };
   } catch(e) { error = e; }
 
   btn.disabled = false; btn.textContent = 'Đăng ngay →';
 
-  if (error || data?.error) {
-    toast('❌ ' + (data?.error || error?.message || 'Lỗi không xác định'));
+  if (error || !data?.success) {
+    toast('❌ ' + (error?.message || 'Lỗi không xác định'));
     return;
   }
-
-  if (data?.fraud_warning?.flagged) {
-    toast('⚠️ Bài đăng bị gắn cờ kiểm tra gian lận!');
-  } else {
-    toast('✦ Đã đăng lời cảm ơn thành công!');
-  }
+  toast('✦ Đã đăng lời cảm ơn thành công!');
 
   document.getElementById('ca').classList.remove('open');
   document.getElementById('compose-msg').value = '';
@@ -2061,16 +2077,44 @@ async function sendGift() {
 
   let data = null, gErr = null;
   try {
-    data = await apiRpc('give_stars', {
-      p_to_user_id: toId, p_stars: stars,
-      p_message: msg || `Cảm ơn bạn! +${stars}★`, p_value_tag: 'teamwork'
+    // Kiểm tra quota
+    const quotaRes = await apiGet('recognitions?from_user_id=eq.' + currentUser.id + '&select=stars&created_at=gte.' + new Date().toISOString().slice(0,10));
+    const usedToday = Array.isArray(quotaRes) ? quotaRes.reduce((s,r) => s + (r.stars||0), 0) : 0;
+    if (usedToday + stars > 5) {
+      toast('❌ Không đủ quota. Còn lại: ' + (5 - usedToday) + '★ hôm nay');
+      btn.disabled = false; btn.textContent = 'Gửi ngay →';
+      return;
+    }
+    if (toId === currentUser.id) {
+      toast('❌ Không thể tự tặng sao cho mình');
+      btn.disabled = false; btn.textContent = 'Gửi ngay →';
+      return;
+    }
+    // INSERT trực tiếp
+    const inserted = await api('POST', 'recognitions', {
+      from_user_id: currentUser.id,
+      to_user_id: toId,
+      stars: stars,
+      message: msg || `Cảm ơn bạn! +${stars}★`,
+      value_tag: 'teamwork'
     });
+    // Cộng điểm người nhận
+    const recvProfile = await apiGet('profiles?id=eq.' + toId + '&select=total_stars,redeemable_points,reputation_points&limit=1');
+    if (recvProfile?.[0]) {
+      const p = recvProfile[0];
+      await api('PATCH', 'profiles?id=eq.' + toId, {
+        total_stars: (p.total_stars||0) + stars,
+        redeemable_points: (p.redeemable_points||0) + stars,
+        reputation_points: (p.reputation_points||0) + stars
+      });
+    }
+    data = { success: true };
   } catch(e) { gErr = e; }
 
   btn.disabled = false; btn.textContent = 'Gửi ngay →';
 
-  if (gErr || data?.error) {
-    toast('❌ ' + (data?.error || gErr?.message));
+  if (gErr || !data?.success) {
+    toast('❌ ' + (gErr?.message || 'Lỗi gửi sao'));
     return;
   }
 
