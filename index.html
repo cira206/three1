@@ -1057,17 +1057,25 @@ textarea.inf { resize:none; min-height:74px; }
 
         <!-- Đổi khối -->
         <div>
-          <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">🔄 Yêu cầu đổi khối</div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px">🔄 Yêu cầu đổi phòng ban</div>
           <div id="transfer-status-box" style="margin-bottom:10px"></div>
-          <div style="display:flex;gap:10px;align-items:flex-end">
-            <div style="flex:1">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
               <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Khối muốn chuyển sang</div>
-              <select class="inp" id="transfer-target" style="margin-bottom:0;width:100%">
+              <select class="inp" id="transfer-block" style="margin-bottom:0;width:100%" onchange="loadTransferDepts()">
                 <option value="">-- Chọn khối --</option>
                 <option value="Khối văn phòng">Khối văn phòng</option>
                 <option value="Khối cửa hàng">Khối cửa hàng</option>
               </select>
             </div>
+            <div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Phòng ban / Cửa hàng</div>
+              <select class="inp" id="transfer-target" style="margin-bottom:0;width:100%" disabled>
+                <option value="">-- Chọn phòng ban --</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-end">
             <div style="flex:1">
               <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Lý do</div>
               <input class="inp" id="transfer-reason" placeholder="Lý do xin chuyển..." style="margin-bottom:0;width:100%;box-sizing:border-box">
@@ -3857,10 +3865,27 @@ async function saveBio() {
   } catch(e) { toast('❌ Lỗi: ' + e.message); }
 }
 
+async function loadTransferDepts() {
+  const block = document.getElementById('transfer-block').value;
+  const deptSel = document.getElementById('transfer-target');
+  deptSel.innerHTML = '<option value="">-- Đang tải... --</option>';
+  deptSel.disabled = true;
+  if (!block) { deptSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>'; return; }
+  // Map sang giá trị khoi trong DB (chữ hoa)
+  const khoiMap = { 'Khối văn phòng': 'KHỐI VĂN PHÒNG', 'Khối cửa hàng': 'KHỐI CỬA HÀNG' };
+  const khoi = khoiMap[block] || block.toUpperCase();
+  const data = await apiGet('departments?khoi=eq.' + encodeURIComponent(khoi) + '&is_active=eq.true&select=name&order=name').catch(() => []);
+  deptSel.innerHTML = '<option value="">-- Chọn phòng ban --</option>' +
+    (Array.isArray(data) ? data.map(d => '<option value="' + d.name + '">' + d.name + '</option>').join('') : '');
+  deptSel.disabled = false;
+}
+
 async function requestTransfer() {
+  const block = document.getElementById('transfer-block').value;
   const target = document.getElementById('transfer-target').value;
   const reason = document.getElementById('transfer-reason').value.trim();
-  if (!target) { toast('Vui lòng chọn khối muốn chuyển'); return; }
+  if (!block) { toast('Vui lòng chọn khối muốn chuyển'); return; }
+  if (!target) { toast('Vui lòng chọn phòng ban'); return; }
   if (!reason) { toast('Vui lòng nhập lý do'); return; }
   if (currentProfile?.department === target) { toast('Bạn đang ở ' + target + ' rồi!'); return; }
   // Kiểm tra pending request
@@ -3868,7 +3893,7 @@ async function requestTransfer() {
     toast('⏳ Bạn đang có yêu cầu chờ duyệt rồi!'); return;
   }
   try {
-    const requestData = JSON.stringify({ from: currentProfile?.department, to: target, reason });
+    const requestData = JSON.stringify({ from: currentProfile?.department, to: target, block: block, reason });
     await api('PATCH', 'profiles?id=eq.' + currentUser.id, {
       transfer_request: requestData,
       transfer_status: 'pending'
