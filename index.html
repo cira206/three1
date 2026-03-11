@@ -1943,8 +1943,11 @@ async function loadQuota() {
   const max  = data.max  || 5;
   const rem  = data.remaining || 0;
 
-  document.getElementById('stat-quota').textContent = rem;
-  document.getElementById('modal-quota-txt').textContent = `Còn ${rem}★ hôm nay · Max ${max}★/ngày`;
+  const myStarsQ = currentProfile?.total_stars || 0;
+  const bonusQ = Math.min(5, myStarsQ);
+  const totalRemQ = rem + bonusQ;
+  document.getElementById('stat-quota').textContent = totalRemQ;
+  document.getElementById('modal-quota-txt').textContent = 'Còn ' + rem + '★ free' + (bonusQ > 0 ? ' + ' + bonusQ + '★ tích lũy' : '') + ' · Max 10★/ngày';
 
   const row = document.getElementById('quota-row');
   row.innerHTML = '';
@@ -2430,7 +2433,20 @@ async function submitPostModal() {
     if (!isSuperAdmin) {
       const quotaRes = await apiGet('recognitions?from_user_id=eq.' + currentUser.id + '&select=stars&created_at=gte.' + new Date().toISOString().slice(0,10));
       const usedToday = Array.isArray(quotaRes) ? quotaRes.reduce((s,r) => s + (r.stars||0), 0) : 0;
-      if (usedToday + stars > 5) throw new Error('Không đủ quota. Còn lại: ' + (5 - usedToday) + '★ hôm nay');
+      const freeLeft = Math.max(0, 5 - usedToday);
+      const myStars = currentProfile?.total_stars || 0;
+      const bonusQuota = Math.min(5, myStars);
+      const totalLeft = freeLeft + bonusQuota;
+      if (stars > totalLeft) throw new Error('Không đủ quota. Còn: ' + freeLeft + '★ free + ' + bonusQuota + '★ tích lũy = ' + totalLeft + '★');
+      const extraStars = Math.max(0, stars - freeLeft);
+      if (extraStars > 0) {
+        await api('PATCH', 'profiles?id=eq.' + currentUser.id, {
+          total_stars: Math.max(0, myStars - extraStars),
+          redeemable_points: Math.max(0, (currentProfile?.redeemable_points||0) - extraStars)
+        });
+        currentProfile.total_stars = Math.max(0, myStars - extraStars);
+        currentProfile.redeemable_points = Math.max(0, (currentProfile?.redeemable_points||0) - extraStars);
+      }
     }
     await api('POST', 'recognitions', { from_user_id: currentUser.id, to_user_id: toId, stars, message: msg || ('Cảm ơn bạn! +' + stars + '★'), value_tag: val, image_url: imageUrl });
     const recvProfile = await apiGet('profiles?id=eq.' + toId + '&select=total_stars,redeemable_points,reputation_points&limit=1');
@@ -2654,10 +2670,24 @@ async function sendGift() {
     if (!isSuperAdmin) {
       const quotaRes = await apiGet('recognitions?from_user_id=eq.' + currentUser.id + '&select=stars&created_at=gte.' + new Date().toISOString().slice(0,10));
       const usedToday = Array.isArray(quotaRes) ? quotaRes.reduce((s,r) => s + (r.stars||0), 0) : 0;
-      if (usedToday + stars > 5) {
-        toast('❌ Không đủ quota. Còn lại: ' + (5 - usedToday) + '★ hôm nay');
+      const freeLeft = Math.max(0, 5 - usedToday);
+      const myStars = currentProfile?.total_stars || 0;
+      const bonusQuota = Math.min(5, myStars); // tối đa 5 sao tích lũy/ngày
+      const totalLeft = freeLeft + bonusQuota;
+      if (stars > totalLeft) {
+        toast('❌ Không đủ quota. Còn: ' + freeLeft + '★ free + ' + bonusQuota + '★ tích lũy = ' + totalLeft + '★');
         btn.disabled = false; btn.textContent = 'Gửi ngay →';
         return;
+      }
+      // Nếu dùng quá free quota -> trừ sao tích lũy
+      const extraStars = Math.max(0, stars - freeLeft);
+      if (extraStars > 0) {
+        await api('PATCH', 'profiles?id=eq.' + currentUser.id, {
+          total_stars: Math.max(0, myStars - extraStars),
+          redeemable_points: Math.max(0, (currentProfile?.redeemable_points||0) - extraStars)
+        });
+        currentProfile.total_stars = Math.max(0, myStars - extraStars);
+        currentProfile.redeemable_points = Math.max(0, (currentProfile?.redeemable_points||0) - extraStars);
       }
     }
     if (toId === currentUser.id) {
