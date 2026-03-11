@@ -581,8 +581,9 @@ textarea.inf { resize:none; min-height:74px; }
 
 /* Admin tabs mobile */
 @media (max-width:768px) {
-  .admin-tabs { gap:0 !important; border-bottom:1.5px solid var(--black); }
+  .admin-tabs { gap:0 !important; border-bottom:1.5px solid var(--black); overflow-x:auto !important; flex-wrap:nowrap !important; display:flex !important; }
   .admin-tabs::-webkit-scrollbar { display:none; }
+  .admin-tabs .tab { flex-shrink:0; }
   .admin-tabs .tab {
     flex-direction:column;
     align-items:center;
@@ -1098,7 +1099,7 @@ textarea.inf { resize:none; min-height:74px; }
         <div class="sb" style="border-bottom:3px solid var(--red)"><div class="sbl">Cảnh báo</div><div class="sbv" style="color:var(--red)" id="adm-flags">—</div><div class="sbi">⚠</div></div>
       </div>
       <!-- TABS -->
-      <div class="tabs admin-tabs" style="margin-bottom:18px;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+      <div class="tabs admin-tabs" style="margin-bottom:18px;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;display:flex">
         <div class="tab active" onclick="adminTab('pending',this)"><span class="tab-icon">⏳</span><span class="tab-txt">Chờ duyệt</span></div>
         <div class="tab" onclick="adminTab('employees',this)"><span class="tab-icon">👥</span><span class="tab-txt">Nhân viên</span></div>
         <div class="tab" onclick="adminTab('depts',this)"><span class="tab-icon">🏢</span><span class="tab-txt">Phòng ban</span></div>
