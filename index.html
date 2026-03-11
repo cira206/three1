@@ -2245,18 +2245,21 @@ async function loadLeaderboard() {
 async function loadWall() {
   const { data } = await sb
     .from('recognitions')
-    .select(`*, from_profile:profiles!from_user_id(full_name,avatar_text), to_profile:profiles!to_user_id(full_name,avatar_text)`)
+    .select(`*, from_profile:profiles!from_user_id(full_name,avatar_text,avatar_url), to_profile:profiles!to_user_id(full_name,avatar_text,avatar_url)`)
     .order('created_at', { ascending: false })
     .limit(30);
   const el = document.getElementById('wall-grid');
   if (!data?.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">◉</div><div class="empty-txt">Chưa có nội dung</div></div>'; return; }
   const valMap  = { teamwork:'TW', customer_first:'CF', innovation:'IN', ownership:'OW', integrity:'IT' };
   const valClass= { teamwork:'vt-tw', customer_first:'vt-cf', innovation:'vt-in', ownership:'vt-ow', integrity:'vt-it' };
-  el.innerHTML = data.map(r => `
+  el.innerHTML = data.map(r => {
+    const fromAvStyle = r.from_profile?.avatar_url ? 'background:transparent;overflow:hidden' : 'background:' + strToColor(r.from_profile?.full_name||'') + ';color:#FFF;border:none';
+    const fromAvInner = r.from_profile?.avatar_url ? '<img src="'+r.from_profile.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : (r.from_profile?.avatar_text||'?');
+    return `
     <div style="background:#FFF;border:1.5px solid var(--border-soft);border-top:3px solid var(--black);padding:14px;margin-bottom:12px;break-inside:avoid">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-        <div class="av" style="width:22px;height:22px;font-size:9px;background:${strToColor(r.from_profile?.full_name||'')};color:#FFF;border:none">${r.from_profile?.avatar_text||'?'}</div>
-        <div style="font-size:11px;font-weight:700">${esc(r.from_profile?.full_name||'?')} <span style="color:var(--gold)">→</span> ${esc(r.to_profile?.full_name||'?')}</div>
+        <div class="av" style="width:22px;height:22px;font-size:9px;${fromAvStyle};cursor:pointer" onclick="viewProfile('${r.from_user_id}')">${fromAvInner}</div>
+        <div style="font-size:11px;font-weight:700"><span style="cursor:pointer" onclick="viewProfile('${r.from_user_id}')">${esc(r.from_profile?.full_name||'?')}</span> <span style="color:var(--gold)">→</span> <span style="cursor:pointer" onclick="viewProfile('${r.to_user_id}')">${esc(r.to_profile?.full_name||'?')}</span></div>
         <span class="vtag ${valClass[r.value_tag]||'vt-tw'}" style="margin-left:auto;font-size:9px">${valMap[r.value_tag]||'?'}</span>
       </div>
       <div style="font-size:13px;line-height:1.65;font-style:italic;margin-bottom:8px">"${esc(r.message)}"</div>
@@ -2264,7 +2267,7 @@ async function loadWall() {
         <div style="font-size:10px;color:var(--text3)">${timeAgo(r.created_at)}</div>
         <div style="font-size:11px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:.04em">${'★'.repeat(r.stars)}</div>
       </div>
-    </div>`).join('');
+    </div>`;}).join('');
 }
 
 // ═══════════════════════════════════════════════
