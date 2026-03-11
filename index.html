@@ -760,6 +760,7 @@ textarea.inf { resize:none; min-height:74px; }
       </div>
       <div class="mobile-user-chip" onclick="go('profile')" style="display:none;align-items:center;gap:6px;cursor:pointer">
         <div class="uav" id="topbar-av" style="width:26px;height:26px;font-size:10px">?</div>
+        <span id="topbar-level" style="font-size:15px;line-height:1" title="Level">🥉</span>
         <span id="topbar-stars" style="font-size:11px;font-weight:800;color:var(--gold)">0★</span>
       </div>
       <div class="live-pill"><div class="ldot"></div><span id="online-count">--</span> online</div>
@@ -993,6 +994,10 @@ textarea.inf { resize:none; min-height:74px; }
         <div>
           <div class="pnm2" id="prof-name">...</div>
           <div class="pdpt2" id="prof-dept">...</div>
+          <div id="prof-level-badge" style="display:inline-flex;align-items:center;gap:5px;margin-top:4px;padding:3px 10px;background:var(--black);color:#fff;font-size:11px;font-weight:800;letter-spacing:.06em">
+            <span id="prof-level-badge-icon">🥉</span>
+            <span id="prof-level-badge-name">BRONZE</span>
+          </div>
           <div class="brow" id="prof-badges"></div>
         </div>
         <div class="profnums">
@@ -1860,6 +1865,8 @@ async function loadApp() {
     const topbarStars = document.getElementById('topbar-stars');
     if (topbarAv)    topbarAv.textContent    = profile.avatar_text || '?';
     if (topbarStars) topbarStars.textContent = (profile.total_stars || 0) + '★';
+    const topbarLevel = document.getElementById('topbar-level');
+    if (topbarLevel) topbarLevel.textContent = getUserLevel(profile.reputation_points || 0).icon;
 
     if (profile.role === 'admin' || profile.role === 'manager') {
       document.getElementById('admin-nav-group').style.display = 'block';
@@ -1869,6 +1876,13 @@ async function loadApp() {
     loadLogo();
     if (profile.role === 'admin' || profile.role === 'manager') {
       loadAdminNotifs();
+    }
+    // Init level từ reputation_points
+    const initLevel = getUserLevel(profile.reputation_points || 0);
+    if (!profile.level_name || profile.level_name !== initLevel.name) {
+      api('PATCH', 'profiles?id=eq.' + currentUser.id, {
+        level_name: initLevel.name, level_icon: initLevel.icon
+      }).catch(() => {});
     }
     await Promise.allSettled([
       loadFeed().catch(e => console.warn('loadFeed:', e)),
@@ -2452,7 +2466,14 @@ async function submitPostModal() {
     const recvProfile = await apiGet('profiles?id=eq.' + toId + '&select=total_stars,redeemable_points,reputation_points&limit=1');
     if (recvProfile?.[0]) {
       const p = recvProfile[0];
-      await api('PATCH', 'profiles?id=eq.' + toId, { total_stars: (p.total_stars||0) + stars, redeemable_points: (p.redeemable_points||0) + stars, reputation_points: (p.reputation_points||0) + stars });
+      const newRep = (p.reputation_points||0) + stars;
+      await api('PATCH', 'profiles?id=eq.' + toId, {
+        total_stars: (p.total_stars||0) + stars,
+        redeemable_points: (p.redeemable_points||0) + stars,
+        reputation_points: newRep,
+        level_name: getUserLevel(newRep).name,
+        level_icon: getUserLevel(newRep).icon
+      });
     }
     data = { success: true };
   } catch(e) { error = e; }
@@ -3722,7 +3743,55 @@ function renderLevelUI(pts) {
   document.getElementById('prof-level-name').textContent = lv.name.toUpperCase();
   const pct = lv.next ? Math.min(100, Math.round((pts - lv.min) / (lv.next - lv.min) * 100)) : 100;
   document.getElementById('prof-level-bar').style.width = pct + '%';
-  document.getElementById('prof-level-progress').textContent = lv.next ? `${pts} / ${lv.next}` : 'MAX LEVEL';
+  document.getElementById('prof-level-progress').textContent = lv.next ? pts + ' / ' + lv.next : 'MAX LEVEL';
+  // Update topbar level badge
+  const tb = document.getElementById('topbar-level');
+  if (tb) tb.textContent = lv.icon;
+  // Update profile banner badge
+  const bi = document.getElementById('prof-level-badge-icon');
+  const bn = document.getElementById('prof-level-badge-name');
+  if (bi) bi.textContent = lv.icon;
+  if (bn) bn.textContent = lv.name.toUpperCase();
+  // Update badge color
+  const badge = document.getElementById('prof-level-badge');
+  if (badge) {
+    const colors = { Bronze:'#CD7F32', Silver:'#A8A9AD', Gold:'var(--gold)', Diamond:'#B9F2FF', Legend:'#FFD700' };
+    badge.style.background = colors[lv.name] || 'var(--black)';
+    badge.style.color = lv.name === 'Diamond' ? '#000' : '#fff';
+  }
+}
+
+async function checkAndUpdateLevel(newPoints) {
+  const oldLevel = currentProfile?.level_name || 'Bronze';
+  const newLevel = getUserLevel(newPoints);
+  // Cập nhật DB
+  try {
+    await api('PATCH', 'profiles?id=eq.' + currentUser.id, {
+      level_name: newLevel.name,
+      level_icon: newLevel.icon,
+      reputation_points: newPoints
+    });
+    currentProfile.level_name = newLevel.name;
+    currentProfile.level_icon = newLevel.icon;
+    currentProfile.reputation_points = newPoints;
+  } catch(e) {}
+  // Thông báo lên level
+  if (newLevel.name !== oldLevel) {
+    toast('🎉 Chúc mừng! Bạn đã lên ' + newLevel.icon + ' ' + newLevel.name + '!');
+    // Thưởng bonus nếu có
+    const lvData = await apiGet('levels?name=eq.' + newLevel.name + '&select=bonus_points,perk&limit=1').catch(() => []);
+    if (lvData?.[0]?.bonus_points > 0) {
+      const bonus = lvData[0].bonus_points;
+      await api('PATCH', 'profiles?id=eq.' + currentUser.id, {
+        total_stars: (currentProfile.total_stars||0) + bonus,
+        redeemable_points: (currentProfile.redeemable_points||0) + bonus
+      });
+      currentProfile.total_stars = (currentProfile.total_stars||0) + bonus;
+      setTimeout(() => toast('🎁 Bonus +' + bonus + '★ vì lên ' + newLevel.name + '!'), 2000);
+    }
+  }
+  // Update UI
+  renderLevelUI(newPoints);
 }
 
 // ═══════════════════════════════════════════════
