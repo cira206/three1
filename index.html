@@ -888,7 +888,7 @@ textarea.inf { resize:none; min-height:74px; }
     <!-- CHALLENGES -->
     <div class="page" id="page-challenges">
       <div class="sh"><div><div class="sh-t">Thử Thách</div><div class="sh-s">Hoàn thành để nhận phần thưởng</div></div></div>
-      <div id="challenges-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:13px">
+      <div id="challenges-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:13px">
         <div class="loading"><div class="spinner"></div></div>
       </div>
     </div>
@@ -1272,6 +1272,58 @@ textarea.inf { resize:none; min-height:74px; }
           </div>
           <div id="redemptions-admin-list"><div class="loading"><div class="spinner"></div></div></div>
         </div>
+
+      <!-- CHALLENGES ADMIN SECTION -->
+      <div id="admin-section-challenges" style="display:none">
+        <div class="card" style="margin-bottom:16px">
+          <div class="ct">🎯 Quản lý Thử Thách</div>
+
+          <!-- Form tạo thử thách -->
+          <div style="background:var(--bg2);padding:14px;border:1.5px solid var(--border-soft);margin-bottom:16px">
+            <div style="font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px">➕ Tạo thử thách mới</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+              <div>
+                <div style="font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:.08em;text-transform:uppercase">Tên thử thách *</div>
+                <input class="inp" id="ch-title" placeholder="VD: Tuần lễ cảm ơn..." style="margin-bottom:0;width:100%;box-sizing:border-box">
+              </div>
+              <div>
+                <div style="font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:.08em;text-transform:uppercase">Emoji</div>
+                <input class="inp" id="ch-emoji" placeholder="🎯" value="🎯" style="margin-bottom:0;width:100%;box-sizing:border-box">
+              </div>
+            </div>
+            <div style="margin-bottom:10px">
+              <div style="font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:.08em;text-transform:uppercase">Mô tả nhiệm vụ *</div>
+              <textarea class="inp" id="ch-desc" placeholder="Mô tả chi tiết nhân viên cần làm gì..." rows="2" style="margin-bottom:0;width:100%;box-sizing:border-box;resize:none"></textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+              <div>
+                <div style="font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:.08em;text-transform:uppercase">Sao thưởng (3-10★)</div>
+                <input class="inp" type="number" id="ch-stars" min="3" max="10" value="5" style="margin-bottom:0;width:100%;box-sizing:border-box">
+              </div>
+              <div>
+                <div style="font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:.08em;text-transform:uppercase">Loại</div>
+                <select class="inp" id="ch-type" style="margin-bottom:0;width:100%;box-sizing:border-box">
+                  <option value="weekly">Tuần</option>
+                  <option value="monthly">Tháng</option>
+                </select>
+              </div>
+              <div>
+                <div style="font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:.08em;text-transform:uppercase">Ngày kết thúc *</div>
+                <input class="inp" type="date" id="ch-ends" style="margin-bottom:0;width:100%;box-sizing:border-box">
+              </div>
+            </div>
+            <button class="btn btn-black" style="width:100%" onclick="adminCreateChallenge()">🎯 Tạo thử thách</button>
+          </div>
+
+          <!-- Danh sách thử thách -->
+          <div id="admin-challenges-list"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
+
+        <!-- Duyệt hoàn thành -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="ct">⏳ Chờ duyệt hoàn thành</div>
+          <div id="admin-completions-list"><div class="loading"><div class="spinner"></div></div></div>
+        </div>
       </div>
 
     </div>
@@ -1605,6 +1657,129 @@ async function doRegister() {
     clearTimeout(t); btn.disabled=false; btn.textContent='Đăng ký →';
     showErr(err,'Lỗi kết nối, thử lại');
   }
+}
+
+
+// ═══════════════════════════════════════════════
+// ADMIN CHALLENGES MANAGEMENT
+// ═══════════════════════════════════════════════
+async function adminCreateChallenge() {
+  const title  = document.getElementById('ch-title').value.trim();
+  const desc   = document.getElementById('ch-desc').value.trim();
+  const stars  = parseInt(document.getElementById('ch-stars').value);
+  const type   = document.getElementById('ch-type').value;
+  const ends   = document.getElementById('ch-ends').value;
+  const emoji  = document.getElementById('ch-emoji').value.trim() || '🎯';
+
+  if (!title) { toast('Vui lòng nhập tên thử thách'); return; }
+  if (!desc)  { toast('Vui lòng nhập mô tả'); return; }
+  if (!ends)  { toast('Vui lòng chọn ngày kết thúc'); return; }
+  if (stars < 3 || stars > 10) { toast('Sao thưởng phải từ 3-10★'); return; }
+
+  try {
+    await api('POST', 'challenges', {
+      title, description: desc, reward_stars: stars, type, emoji,
+      ends_at: new Date(ends + 'T23:59:59').toISOString(),
+      starts_at: new Date().toISOString(),
+      is_active: true, target_count: 0
+    });
+    toast('🎯 Đã tạo thử thách!');
+    document.getElementById('ch-title').value = '';
+    document.getElementById('ch-desc').value = '';
+    document.getElementById('ch-stars').value = '5';
+    document.getElementById('ch-ends').value = '';
+    document.getElementById('ch-emoji').value = '🎯';
+    loadAdminChallenges();
+  } catch(e) { toast('❌ Lỗi: ' + e.message); }
+}
+
+async function loadAdminChallenges() {
+  const el = document.getElementById('admin-challenges-list');
+  if (!el) return;
+  const data = await apiGet('challenges?order=created_at.desc').catch(() => []) || [];
+  if (!data.length) { el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">Chưa có thử thách nào</div>'; return; }
+  el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    + '<thead><tr style="background:var(--black);color:#fff"><th style="padding:8px;text-align:left">Thử thách</th><th style="padding:8px;text-align:center">Sao</th><th style="padding:8px;text-align:center">Loại</th><th style="padding:8px;text-align:center">Kết thúc</th><th style="padding:8px;text-align:center">Trạng thái</th><th style="padding:8px;text-align:center">Xóa</th></tr></thead>'
+    + '<tbody>' + data.map(ch => {
+      const active = new Date(ch.ends_at) > new Date() && ch.is_active;
+      return '<tr style="border-bottom:1px solid var(--bg2)">'
+        + '<td style="padding:8px"><strong>' + (ch.emoji||'🎯') + ' ' + esc(ch.title) + '</strong><div style="font-size:10px;color:var(--text3)">' + esc(ch.description||'') + '</div></td>'
+        + '<td style="padding:8px;text-align:center;color:var(--gold);font-weight:800">+' + ch.reward_stars + '★</td>'
+        + '<td style="padding:8px;text-align:center">' + (ch.type==='weekly'?'Tuần':'Tháng') + '</td>'
+        + '<td style="padding:8px;text-align:center;font-size:11px">' + new Date(ch.ends_at).toLocaleDateString('vi-VN') + '</td>'
+        + '<td style="padding:8px;text-align:center"><span style="font-size:10px;font-weight:800;padding:2px 7px;background:' + (active?'#2D8F5A':'var(--grey)') + ';color:#fff">' + (active?'Đang mở':'Đã đóng') + '</span></td>'
+        + '<td style="padding:8px;text-align:center"><button class="btn" style="font-size:10px;padding:3px 8px;color:var(--red);border-color:var(--red)" onclick="adminDeleteChallenge(this.dataset.id)" data-id="' + ch.id + '">Xóa</button></td>'
+        + '</tr>';
+    }).join('') + '</tbody></table>';
+}
+
+async function adminDeleteChallenge(id) {
+  if (!confirm('Xóa thử thách này?')) return;
+  try {
+    await api('DELETE', 'challenges?id=eq.' + id);
+    toast('🗑 Đã xóa thử thách');
+    loadAdminChallenges();
+    loadAdminCompletions();
+  } catch(e) { toast('❌ Lỗi: ' + e.message); }
+}
+
+async function loadAdminCompletions() {
+  const el = document.getElementById('admin-completions-list');
+  if (!el) return;
+  const data = await apiGet('challenge_completions?status=eq.pending&order=submitted_at.desc&select=*,profiles!challenge_completions_user_id_fkey(full_name,department),challenges!challenge_completions_challenge_id_fkey(title,reward_stars,emoji)').catch(() => []) || [];
+  if (!data.length) { el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">Không có yêu cầu nào đang chờ</div>'; return; }
+  el.innerHTML = data.map(d => {
+    const p = d.profiles || {};
+    const ch = d.challenges || {};
+    return '<div style="padding:12px;border-bottom:1px solid var(--bg2)">'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'
+      + '<div>'
+      + '<div style="font-size:13px;font-weight:800">' + esc(p.full_name||'?') + '</div>'
+      + '<div style="font-size:11px;color:var(--text3)">' + esc(p.department||'') + '</div>'
+      + '<div style="font-size:12px;margin-top:4px">' + (ch.emoji||'🎯') + ' <strong>' + esc(ch.title||'?') + '</strong> · <span style="color:var(--gold)">+' + (ch.reward_stars||0) + '★</span></div>'
+      + '<div style="font-size:10px;color:var(--text3);margin-top:2px">Nộp: ' + timeAgo(d.submitted_at) + '</div>'
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:6px">'
+      + '<button class="btn btn-black" style="font-size:11px;padding:5px 12px" onclick="approveCompletion(this)" data-cid="' + d.id + '" data-uid="' + d.user_id + '" data-stars="' + (ch.reward_stars||5) + '" data-title="' + esc(ch.title||'').replace(/"/g,'') + '">✅ Duyệt</button>'
+      + '<button class="btn" style="font-size:11px;padding:5px 12px;color:var(--red);border-color:var(--red)" onclick="rejectCompletion(this)" data-cid="' + d.id + '" data-name="' + esc(p.full_name||'').replace(/"/g,'') + '">❌ Từ chối</button>'
+      + '</div></div></div>';
+  }).join('');
+}
+
+async function approveCompletion(btn) {
+  const completionId = btn.dataset.cid;
+  const userId = btn.dataset.uid;
+  const stars = parseInt(btn.dataset.stars) || 5;
+  const challengeTitle = btn.dataset.title || '';
+  try {
+    await api('PATCH', 'challenge_completions?id=eq.' + completionId, {
+      status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: currentUser.id
+    });
+    const profileData = await apiGet('profiles?id=eq.' + userId + '&select=total_stars,redeemable_points,reputation_points&limit=1');
+    if (profileData?.[0]) {
+      const p = profileData[0];
+      await api('PATCH', 'profiles?id=eq.' + userId, {
+        total_stars: (p.total_stars||0) + stars,
+        redeemable_points: (p.redeemable_points||0) + stars,
+        reputation_points: (p.reputation_points||0) + stars
+      });
+    }
+    toast('✅ Đã duyệt! Cộng +' + stars + '★ cho nhân viên');
+    loadAdminCompletions();
+  } catch(e) { toast('❌ Lỗi: ' + e.message); }
+}
+
+async function rejectCompletion(btn) {
+  const completionId = btn.dataset.cid;
+  const name = btn.dataset.name || '';
+  if (!confirm('Từ chối hoàn thành của ' + name + '?')) return;
+  try {
+    await api('PATCH', 'challenge_completions?id=eq.' + completionId, {
+      status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: currentUser.id
+    });
+    toast('❌ Đã từ chối');
+    loadAdminCompletions();
+  } catch(e) { toast('❌ Lỗi: ' + e.message); }
 }
 
 function doLogout() {
@@ -1979,21 +2154,51 @@ async function loadChallenges() {
   const { data } = await sb.from('challenges').select('*').eq('is_active', true).order('ends_at');
   const el = document.getElementById('challenges-grid');
   if (!data?.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-txt">Chưa có thử thách nào</div></div>'; return; }
-  el.innerHTML = data.map(c => {
-    const daysLeft = Math.max(0, Math.ceil((new Date(c.ends_at) - new Date()) / 86400000));
-    return `
-    <div class="cc">
-      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-        <span style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:${daysLeft>0?'#2D8F5A':'var(--grey)'}">${daysLeft>0?'● Đang diễn ra':'○ Đã kết thúc'}</span>
-        <span style="font-size:10px;color:var(--text3)">${daysLeft>0?`Còn ${daysLeft} ngày`:'Đã kết thúc'}</span>
-      </div>
-      <div class="cname">${esc(c.title)}</div>
-      <div class="cdesc">${esc(c.description)}</div>
-      <div class="pb-bar"><div class="pb-fill" style="width:0%"></div></div>
-      <div class="pb-lbl">0/${c.target_count} hoàn thành</div>
-      <div class="crew">Thưởng: <span>+${c.reward_stars}★</span></div>
-    </div>`;
+
+  const myComps = await apiGet('challenge_completions?user_id=eq.' + currentUser.id + '&select=challenge_id,status').catch(() => []) || [];
+  const myMap = {};
+  myComps.forEach(x => { myMap[x.challenge_id] = x.status; });
+
+  el.innerHTML = data.map(ch => {
+    const daysLeft = Math.max(0, Math.ceil((new Date(ch.ends_at) - new Date()) / 86400000));
+    const active = daysLeft > 0;
+    const myStatus = myMap[ch.id];
+    let btnHtml = '';
+    if (!active) {
+      btnHtml = '<div style="text-align:center;padding:8px;font-size:11px;color:var(--text3);font-weight:700">Đã kết thúc</div>';
+    } else if (myStatus === 'approved') {
+      btnHtml = '<div style="text-align:center;padding:8px;font-size:12px;color:#2D8F5A;font-weight:800">✅ Đã hoàn thành · Nhận thưởng</div>';
+    } else if (myStatus === 'pending') {
+      btnHtml = '<div style="text-align:center;padding:8px;font-size:11px;color:var(--gold);font-weight:700">⏳ Chờ admin duyệt</div>';
+    } else if (myStatus === 'rejected') {
+      btnHtml = '<button class="btn btn-black" style="width:100%;margin-top:8px" onclick="submitChallenge(\'' + ch.id + '\',\'' + esc(ch.title) + '\')">🔄 Nộp lại</button>';
+    } else {
+      btnHtml = '<button class="btn btn-black" style="width:100%;margin-top:8px" onclick="submitChallenge(\'' + ch.id + '\',\'' + esc(ch.title) + '\')">✓ Hoàn thành</button>';
+    }
+    return '<div class="cc">' + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' + '<span style="font-size:20px">' + (ch.emoji||'🎯') + '</span>' + '<span style="font-size:10px;font-weight:800;letter-spacing:.08em;padding:2px 8px;background:' + (active?'#2D8F5A':'var(--grey)') + ';color:#fff">' + (active?'ĐANG MỞ':'KẾT THÚC') + '</span></div>' + '<div class="cname">' + esc(ch.title) + '</div>' + '<div class="cdesc">' + esc(ch.description) + '</div>' + '<div class="crew" style="margin:8px 0">Thưởng: <span>+' + ch.reward_stars + '★</span> · ' + (ch.type==='weekly'?'Tuần':'Tháng') + '</div>' + '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">⏰ ' + (active ? 'Còn ' + daysLeft + ' ngày' : 'Đã kết thúc') + '</div>' + btnHtml + '</div>';
   }).join('');
+}
+
+async function submitChallenge(challengeId, title) {
+  const existing = await apiGet('challenge_completions?challenge_id=eq.' + challengeId + '&user_id=eq.' + currentUser.id + '&select=id,status').catch(() => []) || [];
+  if (existing.length > 0) {
+    const st = existing[0].status;
+    if (st === 'approved') { toast('✅ Bạn đã hoàn thành thử thách này rồi!'); return; }
+    if (st === 'pending')  { toast('⏳ Đang chờ admin duyệt!'); return; }
+  }
+  if (!confirm('Xác nhận hoàn thành thử thách "' + title + '"?\nAdmin sẽ xem xét và cộng sao cho bạn.')) return;
+  try {
+    await api('POST', 'challenge_completions', { challenge_id: challengeId, user_id: currentUser.id, status: 'pending' });
+    toast('✅ Đã nộp! Admin sẽ duyệt sớm.');
+    sendAdminNotif('challenge_submit', '🎯 Hoàn thành thử thách', (currentProfile?.full_name||'') + ' nộp: "' + title + '"', { challenge_id: challengeId, challenge_name: title });
+    loadChallenges();
+  } catch(e) {
+    if (e.message && (e.message.includes('duplicate') || e.message.includes('unique'))) {
+      toast('⏳ Bạn đã nộp rồi, đang chờ duyệt!');
+    } else {
+      toast('❌ Lỗi: ' + e.message);
+    }
+  }
 }
 
 async function loadActiveChallenges() {
@@ -2710,7 +2915,7 @@ function renderAdminNotifs(data) {
     panel.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">Chưa có hoạt động</div>';
     return;
   }
-  const icons = { give_stars:'⭐', post_recognition:'✍️', redeem_reward:'🎁', new_signup:'👤' };
+  const icons = { give_stars:'⭐', post_recognition:'✍️', redeem_reward:'🎁', new_signup:'👤', challenge_submit:'🎯' };
   panel.innerHTML = data.map(n => `
     <div style="padding:11px 14px;border-bottom:1px solid var(--bg2);${n.is_read?'opacity:.6':''}">
       <div style="display:flex;gap:8px;align-items:flex-start">
@@ -2854,6 +3059,16 @@ function adminTab(name, el) {
   if (name === 'fraud')     loadFraudDashboard();
   if (name === 'history')   loadHistory();
   if (name === 'rewards')   loadRewardsAdmin();
+  if (name === 'challenges') {
+    loadAdminChallenges();
+    loadAdminCompletions();
+    // Set default end date = 7 ngày tới
+    const endsEl = document.getElementById('ch-ends');
+    if (endsEl && !endsEl.value) {
+      const d = new Date(); d.setDate(d.getDate() + 7);
+      endsEl.value = d.toISOString().slice(0,10);
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════
