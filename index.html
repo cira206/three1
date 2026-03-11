@@ -1404,6 +1404,37 @@ textarea.inf { resize:none; min-height:74px; }
     </div>
 
   </div><!-- /main -->
+<!-- MODAL: View Profile -->
+<div class="modal-bg" id="view-profile-modal" onclick="if(event.target===this)closeViewProfileModal()">
+  <div class="modal-box" style="width:480px;max-width:95vw">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+      <div class="av" id="vp-av" style="width:60px;height:60px;font-size:22px;flex-shrink:0;border-radius:50%;display:flex;align-items:center;justify-content:center;overflow:hidden">?</div>
+      <div style="flex:1">
+        <div id="vp-name" style="font-size:17px;font-weight:800;letter-spacing:.06em;text-transform:uppercase"></div>
+        <div id="vp-meta" style="font-size:11px;color:var(--text3);margin-top:3px"></div>
+        <div id="vp-level" style="font-size:12px;font-weight:700;margin-top:4px;color:var(--gold)">🥉 Bronze</div>
+      </div>
+      <div style="text-align:right">
+        <div id="vp-stars" style="font-size:26px;font-weight:800;color:var(--gold)">0★</div>
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em">Tổng sao</div>
+      </div>
+    </div>
+    <!-- Level bar -->
+    <div style="margin-bottom:14px">
+      <div style="height:5px;background:var(--bg2);border-radius:3px;overflow:hidden;margin-bottom:4px">
+        <div id="vp-level-bar" style="height:100%;background:var(--gold);border-radius:3px;transition:.4s;width:0%"></div>
+      </div>
+      <div id="vp-level-progress" style="font-size:10px;color:var(--text3)">0 / 50 pts</div>
+    </div>
+    <!-- Bio -->
+    <div style="background:var(--bg2);padding:10px 13px;border-left:3px solid var(--border-soft);margin-bottom:14px;font-size:12px;font-style:italic;color:var(--text2)" id="vp-bio">Chưa có giới thiệu.</div>
+    <!-- Recent recognitions -->
+    <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">Lời cảm ơn gần đây</div>
+    <div id="vp-recent" style="max-height:180px;overflow-y:auto"></div>
+    <button class="btn btn-outline" style="width:100%;margin-top:14px" onclick="closeViewProfileModal()">Đóng</button>
+  </div>
+</div>
+
 </div><!-- /app -->
 
 <!-- MODAL: Tặng sao nhanh -->
@@ -2088,12 +2119,14 @@ function renderPost(r) {
   const valClass= { teamwork:'vt-tw', customer_first:'vt-cf', innovation:'vt-in', ownership:'vt-ow', integrity:'vt-it' };
   const ago     = timeAgo(r.created_at);
   const avColor = strToColor(from.full_name);
+  const fromAvStyle = from.avatar_url ? 'background:transparent;overflow:hidden' : 'background:' + avColor + ';color:#FFF;border:none';
+  const fromAvInner = from.avatar_url ? '<img src="'+from.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : (from.avatar_text||'?');
   return `
   <div class="pc" id="post-${r.id}">
     <div class="ph">
-      <div class="av" style="background:${avColor};color:#FFF;border:none">${from.avatar_text||'?'}</div>
+      <div class="av" style="${fromAvStyle};cursor:pointer" onclick="viewProfile('${r.from_user_id}')">${fromAvInner}</div>
       <div class="pm">
-        <div class="pn"><strong>${esc(from.full_name)}</strong><span class="arr">→</span><strong>${esc(to.full_name)}</strong></div>
+        <div class="pn"><strong style="cursor:pointer" onclick="viewProfile('${r.from_user_id}')">${esc(from.full_name)}</strong><span class="arr">→</span><strong style="cursor:pointer" onclick="viewProfile('${r.to_user_id}')">${esc(to.full_name)}</strong></div>
         <div class="pt">${ago} · ${esc(from.department)}</div>
       </div>
       <span class="vtag ${valClass[r.value_tag]||'vt-tw'}">${valMap[r.value_tag]||r.value_tag}</span>
@@ -2174,9 +2207,9 @@ async function loadLeaderboard() {
   const podium = document.getElementById('lb-podium');
   const [p1, p2, p3] = [data[0], data[1], data[2]];
   podium.innerHTML = `
-    <div class="pi p2">${p2?`<div class="pav" style="background:${strToColor(p2.full_name)};color:#FFF;border:1.5px solid rgba(0,0,0,.1)">${p2.avatar_text||'?'}</div><div class="pnm">${esc(p2.full_name)}</div><div class="pdpt">${esc(p2.department)}</div><div class="psc">${p2.stars_this_month}★</div><div class="prk">🥈 Hạng 2</div>`:'<div style="color:var(--text3)">—</div>'}</div>
-    <div class="pi p1"><div style="font-size:22px;margin-bottom:4px">👑</div><div class="pav" style="background:${strToColor(p1.full_name)};color:#FFF;border:2px solid var(--gold)">${p1.avatar_text||'?'}</div><div class="pnm">${esc(p1.full_name)}</div><div class="pdpt">${esc(p1.department)}</div><div class="psc">${p1.stars_this_month}★</div><div class="prk">👑 Hạng 1</div></div>
-    <div class="pi p3">${p3?`<div class="pav" style="background:${strToColor(p3.full_name)};color:#FFF;border:1.5px solid rgba(0,0,0,.1)">${p3.avatar_text||'?'}</div><div class="pnm">${esc(p3.full_name)}</div><div class="pdpt">${esc(p3.department)}</div><div class="psc">${p3.stars_this_month}★</div><div class="prk">🥉 Hạng 3</div>`:'<div style="color:var(--text3)">—</div>'}</div>`;
+    <div class="pi p2" style="cursor:pointer" onclick="if(p2)viewProfile('${p2?.user_id}')">${p2?`<div class="pav" style="background:${strToColor(p2.full_name)};color:#FFF;border:1.5px solid rgba(0,0,0,.1)">${p2.avatar_text||'?'}</div><div class="pnm">${esc(p2.full_name)}</div><div class="pdpt">${esc(p2.department)}</div><div class="psc">${p2.stars_this_month}★</div><div class="prk">🥈 Hạng 2</div>`:'<div style="color:var(--text3)">—</div>'}</div>
+    <div class="pi p1" style="cursor:pointer" onclick="viewProfile('${p1.user_id}')"><div style="font-size:22px;margin-bottom:4px">👑</div><div class="pav" style="background:${strToColor(p1.full_name)};color:#FFF;border:2px solid var(--gold)">${p1.avatar_text||'?'}</div><div class="pnm">${esc(p1.full_name)}</div><div class="pdpt">${esc(p1.department)}</div><div class="psc">${p1.stars_this_month}★</div><div class="prk">👑 Hạng 1</div></div>
+    <div class="pi p3" style="cursor:pointer" onclick="if(p3)viewProfile('${p3?.user_id}')">${p3?`<div class="pav" style="background:${strToColor(p3.full_name)};color:#FFF;border:1.5px solid rgba(0,0,0,.1)">${p3.avatar_text||'?'}</div><div class="pnm">${esc(p3.full_name)}</div><div class="pdpt">${esc(p3.department)}</div><div class="psc">${p3.stars_this_month}★</div><div class="prk">🥉 Hạng 3</div>`:'<div style="color:var(--text3)">—</div>'}</div>`;
 
   // Mobile podium cards
   const mobileP = document.getElementById('lb-podium-mobile');
@@ -2197,7 +2230,7 @@ async function loadLeaderboard() {
 
   // Table
   document.getElementById('lb-body').innerHTML = data.map((p,i) => `
-    <tr>
+    <tr style="cursor:pointer" onclick="viewProfile('${p.user_id}')">
       <td><strong style="color:${i===0?'var(--gold)':'var(--grey)'}">${i===0?'👑':i+1}</strong></td>
       <td><div style="display:flex;align-items:center;gap:9px"><div class="av" style="width:28px;height:28px;font-size:10px;background:${strToColor(p.full_name)};color:#FFF;border:none">${p.avatar_text||'?'}</div><strong>${esc(p.full_name)}</strong></div></td>
       <td><span style="background:var(--bg2);padding:2px 8px;font-size:11px;font-weight:700;border:1px solid var(--border-soft)">${esc(p.department)}</span></td>
@@ -3327,6 +3360,64 @@ async function viewEmployee(uid) {
 
 function closeEmpModal() {
   document.getElementById('emp-modal').classList.remove('open');
+}
+
+// ═══════════════════════════════════════
+// VIEW USER PROFILE (public)
+// ═══════════════════════════════════════
+async function viewProfile(uid) {
+  if (!uid) return;
+  // Nếu là chính mình thì go profile
+  if (uid === currentUser?.id) { go('profile'); return; }
+
+  // Fetch profile từ DB
+  const data = await apiGet('profiles?id=eq.' + uid + '&select=*&limit=1').catch(() => []);
+  const emp = Array.isArray(data) ? data[0] : null;
+  if (!emp) { toast('Không tìm thấy thông tin'); return; }
+
+  // Điền vào modal
+  const av = document.getElementById('vp-av');
+  if (emp.avatar_url) {
+    av.innerHTML = '<img src="' + emp.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    av.style.background = 'transparent';
+  } else {
+    av.textContent = emp.avatar_text || '?';
+    av.style.background = strToColor(emp.full_name);
+  }
+  document.getElementById('vp-name').textContent = emp.full_name || '?';
+  document.getElementById('vp-meta').textContent = (emp.department || '—') + ' · ' + (emp.role === 'admin' ? 'Admin' : 'Nhân viên');
+  document.getElementById('vp-level').textContent = (emp.level_icon || '🥉') + ' ' + (emp.level_name || 'Bronze');
+  document.getElementById('vp-stars').textContent = (emp.total_stars || 0) + '★';
+  document.getElementById('vp-bio').textContent = emp.bio || 'Chưa có giới thiệu.';
+
+  // Reputation points & level bar
+  const pts = emp.reputation_points || 0;
+  const lv = getUserLevel(pts);
+  const pct = lv.next ? Math.min(100, Math.round((pts - lv.min) / (lv.next - lv.min) * 100)) : 100;
+  document.getElementById('vp-level-bar').style.width = pct + '%';
+  document.getElementById('vp-level-progress').textContent = lv.next ? pts + ' / ' + lv.next + ' pts' : 'MAX LEVEL';
+
+  // Recent recognitions
+  const recs = await apiGet('recognitions?to_user_id=eq.' + uid + '&select=message,stars,created_at,from_profile:profiles!from_user_id(full_name)&order=created_at.desc&limit=4').catch(() => []);
+  const recEl = document.getElementById('vp-recent');
+  if (!recs?.length) {
+    recEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">Chưa có lời cảm ơn nào</div>';
+  } else {
+    recEl.innerHTML = '';
+    recs.forEach(r => {
+      const d = document.createElement('div');
+      d.style.cssText = 'background:var(--bg2);border-left:3px solid var(--gold);padding:8px 11px;margin-bottom:6px;font-size:12px';
+      d.innerHTML = '<div style="font-style:italic;margin-bottom:3px">"' + esc(r.message) + '"</div>' +
+        '<div style="color:var(--text3);font-size:11px">— ' + esc(r.from_profile?.full_name||'?') + ' · ' + '★'.repeat(r.stars) + '</div>';
+      recEl.appendChild(d);
+    });
+  }
+
+  document.getElementById('view-profile-modal').classList.add('open');
+}
+
+function closeViewProfileModal() {
+  document.getElementById('view-profile-modal').classList.remove('open');
 }
 
 async function deleteEmployee(uid, name) {
