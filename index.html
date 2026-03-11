@@ -1796,8 +1796,23 @@ async function loadFeed() {
   document.getElementById('stat-posts').textContent    = myPosts;
   document.getElementById('stat-received').textContent = myReceived;
 
-  // Total stars
-  if (currentProfile) document.getElementById('stat-total').textContent = currentProfile.total_stars;
+  // Total stars - fetch mới từ DB
+  try {
+    const fresh = await apiGet('profiles?id=eq.' + currentUser.id + '&select=total_stars,redeemable_points,reputation_points,post_count&limit=1');
+    if (fresh?.[0]) {
+      currentProfile.total_stars       = fresh[0].total_stars       ?? 0;
+      currentProfile.redeemable_points = fresh[0].redeemable_points ?? 0;
+      currentProfile.reputation_points = fresh[0].reputation_points ?? 0;
+      currentProfile.post_count        = fresh[0].post_count        ?? 0;
+    }
+  } catch(_) {}
+  document.getElementById('stat-total').textContent = currentProfile.total_stars ?? 0;
+  // Update topbar stars
+  const topbarStars = document.getElementById('topbar-stars');
+  if (topbarStars) topbarStars.textContent = (currentProfile.total_stars || 0) + '★';
+  // Update stat-rank
+  const rankEl = document.getElementById('stat-rank');
+  if (rankEl) rankEl.textContent = (currentProfile.total_stars || 0) > 0 ? (currentProfile.total_stars) + '★ tích lũy' : 'Chưa có sao';
 
   fl.innerHTML = recs.map(r => renderPost(r)).join('');
 }
