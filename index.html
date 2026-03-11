@@ -3337,6 +3337,14 @@ async function deleteEmployee(uid, name) {
     toast('❌ Không thể xóa tài khoản Super Admin'); return;
   }
   try {
+    // Xóa related records trước
+    await api('DELETE', 'admin_notifications?created_by=eq.' + uid).catch(() => {});
+    await api('DELETE', 'admin_notifications?extra->>user_id=eq.' + uid).catch(() => {});
+    await api('DELETE', 'challenge_completions?user_id=eq.' + uid).catch(() => {});
+    await api('DELETE', 'recognitions?from_user_id=eq.' + uid).catch(() => {});
+    await api('DELETE', 'recognitions?to_user_id=eq.' + uid).catch(() => {});
+    await api('DELETE', 'redemptions?user_id=eq.' + uid).catch(() => {});
+    // Xóa profile
     await api('DELETE', 'profiles?id=eq.' + uid);
     toast('🗑 Đã xóa tài khoản ' + name);
     closeEmpModal();
@@ -3834,7 +3842,8 @@ async function saveAvatar() {
     const path = 'avatars/' + currentUser.id + '.' + ext;
     const SURL = 'https://zkdothuvthxenonehnyj.supabase.co';
     const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZG90aHV2dGh4ZW5vbmVobnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTgxMTAsImV4cCI6MjA4ODUzNDExMH0.O4xPbe07-8d0VDUmpt1UukIsN-tEeLbdK9EHUYctSHs';
-    const token = currentSession?.access_token;
+    const sess = loadSession();
+    const token = sess?.access_token || _token;
     // Upload to storage
     const upRes = await fetch(SURL + '/storage/v1/object/avatars/' + path, {
       method: 'POST',
