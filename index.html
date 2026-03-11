@@ -3338,8 +3338,17 @@ async function deleteEmployee(uid, name) {
   }
   try {
     // Xóa related records trước
+    // Xóa tất cả admin_notifications có liên quan đến user này
+    await apiGet('admin_notifications?select=id').then(async rows => {
+      if (!Array.isArray(rows)) return;
+      const toDelete = rows.filter(r => {
+        try { const ex = JSON.parse(r.extra||'{}'); return ex.user_id === uid; } catch(e) { return false; }
+      });
+      for (const r of toDelete) {
+        await api('DELETE', 'admin_notifications?id=eq.' + r.id).catch(() => {});
+      }
+    }).catch(() => {});
     await api('DELETE', 'admin_notifications?created_by=eq.' + uid).catch(() => {});
-    await api('DELETE', 'admin_notifications?extra->>user_id=eq.' + uid).catch(() => {});
     await api('DELETE', 'challenge_completions?user_id=eq.' + uid).catch(() => {});
     await api('DELETE', 'recognitions?from_user_id=eq.' + uid).catch(() => {});
     await api('DELETE', 'recognitions?to_user_id=eq.' + uid).catch(() => {});
@@ -3839,19 +3848,21 @@ async function saveAvatar() {
   btn.disabled = true; btn.textContent = 'Đang lưu...';
   try {
     const ext = file.name.split('.').pop();
-    const path = 'avatars/' + currentUser.id + '.' + ext;
+    const fileName = currentUser.id + '.' + ext;
     const SURL = 'https://zkdothuvthxenonehnyj.supabase.co';
-    const SKEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprZG90aHV2dGh4ZW5vbmVobnlqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTgxMTAsImV4cCI6MjA4ODUzNDExMH0.O4xPbe07-8d0VDUmpt1UukIsN-tEeLbdK9EHUYctSHs';
     const sess = loadSession();
     const token = sess?.access_token || _token;
-    // Upload to storage
-    const upRes = await fetch(SURL + '/storage/v1/object/avatars/' + path, {
+    // Upload to storage bucket 'avatars'
+    const upRes = await fetch(SURL + '/storage/v1/object/avatars/' + fileName, {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token, 'x-upsert': 'true', 'Content-Type': file.type },
       body: file
     });
-    if (!upRes.ok) throw new Error('Upload failed');
-    const avatarUrl = SURL + '/storage/v1/object/public/avatars/' + path;
+    if (!upRes.ok) {
+      const errText = await upRes.text();
+      throw new Error('Upload failed: ' + errText);
+    }
+    const avatarUrl = SURL + '/storage/v1/object/public/avatars/' + fileName;
     await api('PATCH', 'profiles?id=eq.' + currentUser.id, { avatar_url: avatarUrl });
     currentProfile.avatar_url = avatarUrl;
     toast('✅ Đã cập nhật ảnh đại diện!');
