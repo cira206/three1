@@ -1495,7 +1495,8 @@ textarea.inf { resize:none; min-height:74px; }
     <div class="ms2" id="modal-quota-txt">Còn — sao hôm nay · Max 5★/ngày</div>
     <div style="margin-bottom:11px">
       <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Người nhận</div>
-      <select class="inf" id="modal-to" style="margin-bottom:0"><option value="">Chọn đồng nghiệp...</option></select>
+      <input class="inp" id="modal-to-search" placeholder="🔍 Tìm tên nhân viên..." style="margin-bottom:6px;width:100%;box-sizing:border-box" oninput="filterModalRecipient('modal-to-search','modal-to')">
+      <select class="inf" id="modal-to" size="5" style="margin-bottom:0;width:100%;height:120px"><option value="">Chọn đồng nghiệp...</option></select>
     </div>
     <div style="margin-bottom:11px">
       <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:7px">Số sao tặng</div>
