@@ -1494,9 +1494,10 @@ textarea.inf { resize:none; min-height:74px; }
     <div class="mt2">★ Tặng Sao Nhanh</div>
     <div class="ms2" id="modal-quota-txt">Còn — sao hôm nay · Max 5★/ngày</div>
     <div style="margin-bottom:11px">
-      <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Người nhận</div>
-      <input class="inp" id="modal-to-search" placeholder="🔍 Tìm tên nhân viên..." style="margin-bottom:6px;width:100%;box-sizing:border-box" oninput="filterModalRecipient('modal-to-search','modal-to')">
-      <select class="inf" id="modal-to" size="5" style="margin-bottom:0;width:100%;height:120px"><option value="">Chọn đồng nghiệp...</option></select>
+      <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Người nhận <span style="font-weight:400;color:var(--text3)">(chọn nhiều)</span></div>
+      <input class="inp" id="modal-to-search" placeholder="🔍 Tìm tên nhân viên..." style="margin-bottom:6px;width:100%;box-sizing:border-box" oninput="filterGiveRecipients()">
+      <div id="modal-to-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;min-height:0"></div>
+      <div id="modal-to-list" style="max-height:140px;overflow-y:auto;border:1.5px solid var(--border-soft);background:var(--bg2)"></div>
     </div>
     <div style="margin-bottom:11px">
       <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:7px">Số sao tặng</div>
@@ -1525,8 +1526,9 @@ textarea.inf { resize:none; min-height:74px; }
     <div class="ms2">Ghi nhận đồng nghiệp kèm hình ảnh</div>
     <div style="margin-bottom:11px">
       <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:5px">Người nhận</div>
-      <input class="inp" id="pm-to-search" placeholder="🔍 Tìm tên nhân viên..." style="margin-bottom:6px;width:100%;box-sizing:border-box" oninput="filterModalRecipient('pm-to-search','pm-to')">
-      <select class="inf" id="pm-to" size="5" style="margin-bottom:0;width:100%;height:120px"><option value="">Chọn đồng nghiệp...</option></select>
+      <input class="inp" id="pm-to-search" placeholder="🔍 Tìm tên nhân viên..." style="margin-bottom:6px;width:100%;box-sizing:border-box" oninput="filterPostRecipients()">
+      <div id="pm-to-tags" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;min-height:0"></div>
+      <div id="pm-to-list" style="max-height:140px;overflow-y:auto;border:1.5px solid var(--border-soft);background:var(--bg2)"></div>
     </div>
     <div style="margin-bottom:11px">
       <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:7px">Số sao tặng</div>
@@ -2083,16 +2085,58 @@ function go(id) {
 // ═══════════════════════════════════════════════
 // LOAD EMPLOYEES (for dropdowns)
 // ═══════════════════════════════════════════════
+let _allRecipients = [];
+let _giveSelected = new Set(); // selected ids cho give modal
+let _postSelected = new Set(); // selected ids cho post modal
+
 async function loadEmployees() {
   const { data } = await sb.from('profiles').select('id, full_name, department').eq('is_active', true).neq('id', currentUser.id).order('full_name');
-  const selects = ['compose-to', 'modal-to'];
-  selects.forEach(id => {
-    const sel = document.getElementById(id);
-    sel.innerHTML = '<option value="">Chọn người nhận...</option>';
-    (data || []).forEach(p => {
-      sel.innerHTML += `<option value="${p.id}">${p.full_name} – ${p.department}</option>`;
-    });
+  _allRecipients = data || [];
+  renderRecipientList('modal-to-list', 'modal-to-tags', _giveSelected, 'give');
+  renderRecipientList('pm-to-list', 'pm-to-tags', _postSelected, 'post');
+}
+
+function renderRecipientList(listId, tagsId, selectedSet, mode) {
+  const listEl = document.getElementById(listId);
+  const tagsEl = document.getElementById(tagsId);
+  if (!listEl || !tagsEl) return;
+  const q = document.getElementById(mode === 'give' ? 'modal-to-search' : 'pm-to-search')?.value?.toLowerCase() || '';
+  const filtered = _allRecipients.filter(p => p.full_name.toLowerCase().includes(q) || (p.department||'').toLowerCase().includes(q));
+  listEl.innerHTML = '';
+  filtered.forEach(p => {
+    const isSel = selectedSet.has(p.id);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border-soft);' + (isSel ? 'background:var(--gold-light,#fffbe6)' : '');
+    row.innerHTML = '<div style="width:16px;height:16px;border:1.5px solid var(--black);border-radius:2px;flex-shrink:0;background:' + (isSel ? 'var(--gold)' : '#fff') + ';display:flex;align-items:center;justify-content:center">' + (isSel ? '✓' : '') + '</div>' +
+      '<div style="flex:1"><div style="font-size:12px;font-weight:700">' + esc(p.full_name) + '</div><div style="font-size:10px;color:var(--text3)">' + esc(p.department||'') + '</div></div>';
+    row.onclick = () => toggleRecipient(p.id, p.full_name, listId, tagsId, selectedSet, mode);
+    listEl.appendChild(row);
   });
+  // Render tags
+  tagsEl.innerHTML = '';
+  selectedSet.forEach(id => {
+    const p = _allRecipients.find(x => x.id === id);
+    if (!p) return;
+    const tag = document.createElement('div');
+    tag.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:var(--black);color:#fff;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer';
+    tag.innerHTML = esc(p.full_name) + ' ✕';
+    tag.onclick = () => toggleRecipient(p.id, p.full_name, listId, tagsId, selectedSet, mode);
+    tagsEl.appendChild(tag);
+  });
+}
+
+function toggleRecipient(id, name, listId, tagsId, selectedSet, mode) {
+  if (selectedSet.has(id)) selectedSet.delete(id);
+  else selectedSet.add(id);
+  renderRecipientList(listId, tagsId, selectedSet, mode);
+}
+
+function filterGiveRecipients() {
+  renderRecipientList('modal-to-list', 'modal-to-tags', _giveSelected, 'give');
+}
+
+function filterPostRecipients() {
+  renderRecipientList('pm-to-list', 'pm-to-tags', _postSelected, 'post');
 }
 
 // ═══════════════════════════════════════════════
@@ -2567,8 +2611,9 @@ function openPostModal() {
 }
 function closePostModal() {
   document.getElementById('post-modal').classList.remove('open');
+  _postSelected = new Set();
   const s = document.getElementById('pm-to-search');
-  if (s) { s.value = ''; filterModalRecipient('pm-to-search','pm-to'); }
+  if (s) s.value = '';
   document.getElementById('pm-msg').value = '';
   document.getElementById('pm-img-preview').style.display = 'none';
   document.getElementById('pm-img-input').value = '';
@@ -2602,13 +2647,14 @@ function removePostModalImage() {
   document.getElementById('pm-img-input').value = '';
 }
 async function submitPostModal() {
-  const toId = document.getElementById('pm-to').value;
+  const toIds2 = [..._postSelected];
+  const toId = toIds2[0] || ''; // for quota check
   const msg = document.getElementById('pm-msg').value.trim();
   const starEl = document.querySelector('#pm-stars-row .so.sel');
   const valEl = document.querySelector('#pm-val-row .vc.sel');
   const stars = starEl ? parseInt(starEl.dataset.stars) : 1;
   const val = valEl ? valEl.dataset.val : 'teamwork';
-  if (!toId) { toast('Vui lòng chọn người nhận'); return; }
+  if (!toIds2.length) { toast('Vui lòng chọn ít nhất 1 người nhận'); return; }
   const btn = document.getElementById('btn-post-modal');
   btn.disabled = true; btn.textContent = 'Đang gửi...';
   let imageUrl = null;
@@ -2637,18 +2683,20 @@ async function submitPostModal() {
         currentProfile.redeemable_points = Math.max(0, (currentProfile?.redeemable_points||0) - extraStars);
       }
     }
-    await api('POST', 'recognitions', { from_user_id: currentUser.id, to_user_id: toId, stars, message: msg || ('Cảm ơn bạn! +' + stars + '★'), value_tag: val, image_url: imageUrl });
-    const recvProfile = await apiGet('profiles?id=eq.' + toId + '&select=total_stars,redeemable_points,reputation_points&limit=1');
-    if (recvProfile?.[0]) {
-      const p = recvProfile[0];
-      const newRep = (p.reputation_points||0) + stars;
-      await api('PATCH', 'profiles?id=eq.' + toId, {
-        total_stars: (p.total_stars||0) + stars,
-        redeemable_points: (p.redeemable_points||0) + stars,
-        reputation_points: newRep,
-        level_name: getUserLevel(newRep).name,
-        level_icon: getUserLevel(newRep).icon
-      });
+    for (const tid of toIds2) {
+      await api('POST', 'recognitions', { from_user_id: currentUser.id, to_user_id: tid, stars, message: msg || ('Cảm ơn bạn! +' + stars + '★'), value_tag: val, image_url: imageUrl });
+      const recvProfile = await apiGet('profiles?id=eq.' + tid + '&select=total_stars,redeemable_points,reputation_points&limit=1');
+      if (recvProfile?.[0]) {
+        const p = recvProfile[0];
+        const newRep = (p.reputation_points||0) + stars;
+        await api('PATCH', 'profiles?id=eq.' + tid, {
+          total_stars: (p.total_stars||0) + stars,
+          redeemable_points: (p.redeemable_points||0) + stars,
+          reputation_points: newRep,
+          level_name: getUserLevel(newRep).name,
+          level_icon: getUserLevel(newRep).icon
+        });
+      }
     }
     data = { success: true };
   } catch(e) { error = e; }
@@ -2663,12 +2711,15 @@ async function submitPostModal() {
 }
 
 function openGiveModal() {
+  _giveSelected = new Set();
+  renderRecipientList('modal-to-list', 'modal-to-tags', _giveSelected, 'give');
   document.getElementById('give-modal').classList.add('open');
 }
 function closeModal() {
   document.getElementById('give-modal').classList.remove('open');
+  _giveSelected = new Set();
   const s = document.getElementById('modal-to-search');
-  if (s) { s.value = ''; filterModalRecipient('modal-to-search','modal-to'); }
+  if (s) s.value = '';
 }
 document.getElementById('give-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('give-modal')) closeModal();
@@ -2888,44 +2939,48 @@ async function sendGift() {
         currentProfile.redeemable_points = Math.max(0, (currentProfile?.redeemable_points||0) - extraStars);
       }
     }
-    if (toId === currentUser.id) {
+    if (toIds.includes(currentUser.id)) {
       toast('❌ Không thể tự tặng sao cho mình');
       btn.disabled = false; btn.textContent = 'Gửi ngay →';
       return;
     }
-    // INSERT trực tiếp
-    await api('POST', 'recognitions', {
-      from_user_id: currentUser.id,
-      to_user_id: toId,
-      stars: stars,
-      message: msg || `Cảm ơn bạn! +${stars}★`,
-      value_tag: 'teamwork'
-    });
-    // Cộng điểm người nhận
-    const recvProfile = await apiGet('profiles?id=eq.' + toId + '&select=total_stars,redeemable_points,reputation_points&limit=1');
-    if (recvProfile?.[0]) {
-      const p = recvProfile[0];
-      await api('PATCH', 'profiles?id=eq.' + toId, {
-        total_stars: (p.total_stars||0) + stars,
-        redeemable_points: (p.redeemable_points||0) + stars,
-        reputation_points: (p.reputation_points||0) + stars
+    // INSERT cho tất cả người nhận
+    for (const tid of toIds) {
+      await api('POST', 'recognitions', {
+        from_user_id: currentUser.id,
+        to_user_id: tid,
+        stars: stars,
+        message: msg || `Cảm ơn bạn! +${stars}★`,
+        value_tag: 'teamwork'
       });
+      const recvProfile = await apiGet('profiles?id=eq.' + tid + '&select=total_stars,redeemable_points,reputation_points&limit=1');
+      if (recvProfile?.[0]) {
+        const p = recvProfile[0];
+        const newRep = (p.reputation_points||0) + stars;
+        await api('PATCH', 'profiles?id=eq.' + tid, {
+          total_stars: (p.total_stars||0) + stars,
+          redeemable_points: (p.redeemable_points||0) + stars,
+          reputation_points: newRep,
+          level_name: getUserLevel(newRep).name,
+          level_icon: getUserLevel(newRep).icon
+        });
+      }
     }
     data = { success: true };
   } catch(e) { gErr = e; }
 
   btn.disabled = false; btn.textContent = 'Gửi ngay →';
 
-  if (gErr || !data?.success) {
+  if (gErr) {
     toast('❌ ' + (gErr?.message || 'Lỗi gửi sao'));
     return;
   }
 
   closeModal();
   document.getElementById('modal-msg').value = '';
-  toast('✦ Đã gửi sao thành công!');
+  toast('✦ Đã tặng ' + stars + '★ cho ' + toIds.length + ' người!');
   // Thông báo admin
-  const toName = document.getElementById('modal-to').options[document.getElementById('modal-to').selectedIndex]?.text || '';
+  const toName = toIds.map(id => _allRecipients.find(p=>p.id===id)?.full_name||'?').join(', ');
   sendAdminNotif('give_stars', '⭐ Tặng sao mới', `${currentProfile?.full_name} tặng ${stars}★ cho ${toName.split('–')[0].trim()}`, { stars, target_name: toName });
   await loadQuota();
 }
