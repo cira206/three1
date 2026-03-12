@@ -785,6 +785,10 @@ textarea.inf { resize:none; min-height:74px; }
 
     <!-- FEED -->
     <div class="page active" id="page-feed">
+      <!-- BANNER -->
+      <div id="home-banner-wrap" style="display:none;margin-bottom:16px;border-radius:0;overflow:hidden;max-height:220px">
+        <img id="home-banner-img" src="" style="width:100%;max-height:220px;object-fit:cover;display:block;border:2px solid var(--border-soft)">
+      </div>
       <div class="ticker"><div class="ti" id="ticker-text">Đang tải tin tức...</div></div>
       <div class="stats-row">
         <div class="sb hl"><div class="sbl">Tổng sao của tôi</div><div class="sbv" id="stat-total">—</div><div class="sbn" id="stat-rank">Đang tải...</div><div class="sbi">★</div></div>
@@ -1218,6 +1222,23 @@ textarea.inf { resize:none; min-height:74px; }
             <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Upload logo mới (PNG, JPG, SVG · tối đa 2MB)</div>
             <input type="file" id="logo-file" accept="image/*" style="display:none" onchange="uploadLogo(this)">
             <button class="btn btn-outline" onclick="document.getElementById('logo-file').click()">Chọn file logo →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- BANNER UPLOAD -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="ct">🖼 Banner trang chủ</div>
+        <div style="margin-bottom:12px">
+          <div id="banner-preview-wrap" style="display:none;margin-bottom:10px;max-height:180px;overflow:hidden;border:1.5px solid var(--border-soft)">
+            <img id="banner-preview-img" src="" style="width:100%;max-height:180px;object-fit:cover;display:block">
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Upload banner hiển thị đầu trang chủ (JPG, PNG · tỉ lệ ngang · tối đa 5MB)</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <input type="file" id="banner-file" accept="image/*" style="display:none" onchange="previewBanner(this)">
+            <button class="btn btn-outline" onclick="document.getElementById('banner-file').click()">📁 Chọn ảnh banner</button>
+            <button class="btn btn-black" id="btn-upload-banner" style="display:none" onclick="uploadBanner()">⬆ Lưu banner</button>
+            <button class="btn btn-outline" style="color:var(--red);border-color:var(--red)" onclick="removeBanner()">🗑 Xóa banner</button>
           </div>
         </div>
       </div>
@@ -3847,10 +3868,79 @@ async function loadAdminList() {
 }
 
 // Load logo on startup
+function previewBanner(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wrap = document.getElementById('banner-preview-wrap');
+    const img = document.getElementById('banner-preview-img');
+    if (wrap && img) { img.src = e.target.result; wrap.style.display = 'block'; }
+    const btn = document.getElementById('btn-upload-banner');
+    if (btn) btn.style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function uploadBanner() {
+  const file = document.getElementById('banner-file').files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('❌ File quá lớn, tối đa 5MB'); return; }
+  const btn = document.getElementById('btn-upload-banner');
+  btn.disabled = true; btn.textContent = 'Đang lưu...';
+  try {
+    const ext = file.name.split('.').pop();
+    const path = 'home-banner.' + ext;
+    const { error } = await sb.storage.from('logos').upload(path, file, { upsert: true });
+    if (error) throw error;
+    const { data: url } = sb.storage.from('logos').getPublicUrl(path);
+    const publicUrl = url.publicUrl + '?t=' + Date.now();
+    await sb.from('app_settings').upsert({ key: 'banner_url', value: publicUrl, updated_at: new Date().toISOString() });
+    applyBanner(publicUrl);
+    toast('✅ Đã cập nhật banner trang chủ!');
+    btn.textContent = 'Đã lưu ✓';
+  } catch(e) {
+    toast('❌ Lỗi: ' + e.message);
+    btn.disabled = false; btn.textContent = '⬆ Lưu banner';
+  }
+}
+
+async function removeBanner() {
+  if (!confirm('Xóa banner trang chủ?')) return;
+  await sb.from('app_settings').upsert({ key: 'banner_url', value: '', updated_at: new Date().toISOString() });
+  applyBanner('');
+  toast('🗑 Đã xóa banner');
+}
+
+function applyBanner(url) {
+  const wrap = document.getElementById('home-banner-wrap');
+  const img = document.getElementById('home-banner-img');
+  if (!wrap || !img) return;
+  if (url) {
+    img.src = url;
+    wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+    img.src = '';
+  }
+  // Cũng update preview trong admin
+  const adminWrap = document.getElementById('banner-preview-wrap');
+  const adminImg = document.getElementById('banner-preview-img');
+  if (adminWrap && adminImg && url) {
+    adminImg.src = url;
+    adminWrap.style.display = 'block';
+  }
+}
+
 async function loadLogo() {
   try {
-    const arr = await apiGet('app_settings?key=eq.logo_url&select=value&limit=1');
-    if (arr?.[0]?.value) applyLogo(arr[0].value);
+    const arr = await apiGet('app_settings?key=in.(logo_url,banner_url)&select=key,value');
+    if (Array.isArray(arr)) {
+      const logo = arr.find(r => r.key === 'logo_url');
+      const banner = arr.find(r => r.key === 'banner_url');
+      if (logo?.value) applyLogo(logo.value);
+      if (banner?.value) applyBanner(banner.value);
+    }
   } catch(e) {}
 }
 
