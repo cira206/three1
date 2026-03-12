@@ -1401,6 +1401,27 @@ textarea.inf { resize:none; min-height:74px; }
                 <input class="inp" type="date" id="ch-ends" style="margin-bottom:0;width:100%;box-sizing:border-box">
               </div>
             </div>
+            <!-- Điều kiện hoàn thành -->
+            <div style="margin-bottom:10px;padding:12px;background:var(--bg2);border:1px solid var(--border-soft)">
+              <div style="font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">⚙️ Điều kiện hoàn thành</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <div>
+                  <div style="font-size:10px;font-weight:700;margin-bottom:4px;text-transform:uppercase">Loại điều kiện</div>
+                  <select class="inp" id="ch-cond-type" style="margin-bottom:0;width:100%" onchange="toggleCondValue()">
+                    <option value="manual">📋 Thủ công (admin duyệt)</option>
+                    <option value="stars_received">⭐ Nhận đủ X sao</option>
+                    <option value="stars_given">🎁 Tặng đủ X sao</option>
+                    <option value="posts_made">✍️ Đăng đủ X bài cảm ơn</option>
+                    <option value="people_given">👥 Tặng sao cho X người</option>
+                  </select>
+                </div>
+                <div id="ch-cond-value-wrap" style="display:none">
+                  <div style="font-size:10px;font-weight:700;margin-bottom:4px;text-transform:uppercase">Số lượng cần đạt</div>
+                  <input class="inp" type="number" id="ch-cond-value" min="1" value="5" style="margin-bottom:0;width:100%;box-sizing:border-box">
+                </div>
+              </div>
+              <div id="ch-cond-hint" style="font-size:11px;color:var(--text3);margin-top:8px">Nhân viên tự nộp bằng chứng, admin xem xét và duyệt thủ công.</div>
+            </div>
             <button class="btn btn-black" style="width:100%" onclick="adminCreateChallenge()">🎯 Tạo thử thách</button>
           </div>
 
@@ -1860,12 +1881,17 @@ async function adminCreateChallenge() {
   if (!ends)  { toast('Vui lòng chọn ngày kết thúc'); return; }
   if (stars < 3 || stars > 10) { toast('Sao thưởng phải từ 3-10★'); return; }
 
+  const condType  = document.getElementById('ch-cond-type').value;
+  const condValue = parseInt(document.getElementById('ch-cond-value').value) || 0;
+
   try {
     await api('POST', 'challenges', {
       title, description: desc, reward_stars: stars, type, emoji,
       ends_at: new Date(ends + 'T23:59:59').toISOString(),
       starts_at: new Date().toISOString(),
-      is_active: true, target_count: 0
+      is_active: true, target_count: 0,
+      condition_type: condType,
+      condition_value: condType === 'manual' ? 0 : condValue
     });
     toast('🎯 Đã tạo thử thách!');
     document.getElementById('ch-title').value = '';
@@ -1873,6 +1899,9 @@ async function adminCreateChallenge() {
     document.getElementById('ch-stars').value = '5';
     document.getElementById('ch-ends').value = '';
     document.getElementById('ch-emoji').value = '🎯';
+    document.getElementById('ch-cond-type').value = 'manual';
+    document.getElementById('ch-cond-value').value = '5';
+    document.getElementById('ch-cond-value-wrap').style.display = 'none';
     loadAdminChallenges();
   } catch(e) { toast('❌ Lỗi: ' + e.message); }
 }
@@ -2109,6 +2138,7 @@ function go(id) {
 // LOAD EMPLOYEES (for dropdowns)
 // ═══════════════════════════════════════════════
 let _allRecipients = [];
+let _challengesCache = {};
 let _giveSelected = new Set(); // selected ids cho give modal
 let _postSelected = new Set(); // selected ids cho post modal
 
@@ -2397,6 +2427,7 @@ async function loadChallenges() {
   const { data } = await sb.from('challenges').select('*').eq('is_active', true).order('ends_at');
   const el = document.getElementById('challenges-grid');
   if (!data?.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-txt">Chưa có thử thách nào</div></div>'; return; }
+  (data||[]).forEach(ch => { _challengesCache[ch.id] = ch; });
 
   const myComps = await apiGet('challenge_completions?user_id=eq.' + currentUser.id + '&select=challenge_id,status').catch(() => []) || [];
   const myMap = {};
@@ -2418,7 +2449,10 @@ async function loadChallenges() {
     } else {
       btnHtml = '<button class="btn btn-black" style="width:100%;margin-top:8px" onclick="submitChallenge(\'' + ch.id + '\',\'' + esc(ch.title) + '\')">✓ Hoàn thành</button>';
     }
-    return '<div class="cc">' + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' + '<span style="font-size:20px">' + (ch.emoji||'🎯') + '</span>' + '<span style="font-size:10px;font-weight:800;letter-spacing:.08em;padding:2px 8px;background:' + (active?'#2D8F5A':'var(--grey)') + ';color:#fff">' + (active?'ĐANG MỞ':'KẾT THÚC') + '</span></div>' + '<div class="cname">' + esc(ch.title) + '</div>' + '<div class="cdesc">' + esc(ch.description) + '</div>' + '<div class="crew" style="margin:8px 0">Thưởng: <span>+' + ch.reward_stars + '★</span> · ' + (ch.type==='weekly'?'Tuần':'Tháng') + '</div>' + '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">⏰ ' + (active ? 'Còn ' + daysLeft + ' ngày' : 'Đã kết thúc') + '</div>' + btnHtml + '</div>';
+    const condLabels = { manual:'📋 Thủ công', stars_received:'⭐ Tự động', stars_given:'🎁 Tự động', posts_made:'✍️ Tự động', people_given:'👥 Tự động' };
+  const condDesc = { manual:'Admin duyệt', stars_received:'Nhận đủ ' + (ch.condition_value||0) + '★', stars_given:'Tặng đủ ' + (ch.condition_value||0) + '★', posts_made:'Đăng đủ ' + (ch.condition_value||0) + ' bài', people_given:'Tặng ' + (ch.condition_value||0) + ' người' };
+  const cType = ch.condition_type || 'manual';
+  return '<div class="cc">' + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' + '<span style="font-size:20px">' + (ch.emoji||'🎯') + '</span>' + '<div style="display:flex;gap:4px;align-items:center"><span style="font-size:9px;font-weight:800;padding:2px 6px;background:' + (cType==='manual'?'#888':'#2D6FAD') + ';color:#fff">' + (condLabels[cType]||'') + '</span><span style="font-size:10px;font-weight:800;letter-spacing:.08em;padding:2px 8px;background:' + (active?'#2D8F5A':'var(--grey)') + ';color:#fff">' + (active?'ĐANG MỞ':'KẾT THÚC') + '</span></div></div>' + '<div class="cname">' + esc(ch.title) + '</div>' + '<div class="cdesc">' + esc(ch.description) + '</div>' + '<div class="crew" style="margin:8px 0">Thưởng: <span>+' + ch.reward_stars + '★</span> · ' + (ch.type==='weekly'?'Tuần':'Tháng') + '</div>' + '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">⏰ ' + (active ? 'Còn ' + daysLeft + ' ngày' : 'Đã kết thúc') + '</div>' + btnHtml + '</div>';
   }).join('');
 }
 
@@ -2429,18 +2463,65 @@ async function submitChallenge(challengeId, title) {
     if (st === 'approved') { toast('✅ Bạn đã hoàn thành thử thách này rồi!'); return; }
     if (st === 'pending')  { toast('⏳ Đang chờ admin duyệt!'); return; }
   }
-  if (!confirm('Xác nhận hoàn thành thử thách "' + title + '"?\nAdmin sẽ xem xét và cộng sao cho bạn.')) return;
+
+  const ch = _challengesCache[challengeId];
+  const condType = ch?.condition_type || 'manual';
+
+  if (condType === 'manual') {
+    // Thủ công: hỏi xác nhận rồi gửi chờ duyệt
+    if (!confirm('Xác nhận hoàn thành thử thách "' + title + '"?\nAdmin sẽ xem xét và cộng sao cho bạn.')) return;
+    try {
+      await api('POST', 'challenge_completions', { challenge_id: challengeId, user_id: currentUser.id, status: 'pending' });
+      toast('✅ Đã nộp! Admin sẽ duyệt sớm.');
+      sendAdminNotif('challenge_submit', '🎯 Hoàn thành thử thách', (currentProfile?.full_name||'') + ' nộp: "' + title + '"', { challenge_id: challengeId, challenge_name: title });
+      loadChallenges();
+    } catch(e) {
+      if (e.message?.includes('duplicate') || e.message?.includes('unique')) toast('⏳ Bạn đã nộp rồi, đang chờ duyệt!');
+      else toast('❌ Lỗi: ' + e.message);
+    }
+    return;
+  }
+
+  // Tự động: kiểm tra điều kiện
+  toast('⏳ Đang kiểm tra điều kiện...');
+  const result = await checkChallengeCondition(ch);
+
+  const typeLabel = { stars_received:'sao nhận được', stars_given:'sao đã tặng', posts_made:'bài đăng', people_given:'người được tặng sao' };
+
+  if (!result.pass) {
+    toast('❌ Chưa đủ điều kiện! Bạn có ' + result.count + '/' + result.needed + ' ' + (typeLabel[result.type]||''));
+    return;
+  }
+
+  // Đủ điều kiện → tự động duyệt + cộng sao
+  if (!confirm('🎉 Bạn đã đủ điều kiện! (' + result.count + '/' + result.needed + ' ' + (typeLabel[result.type]||'') + ')\nXác nhận nhận ' + (ch.reward_stars||0) + '★ thưởng?')) return;
+
   try {
-    await api('POST', 'challenge_completions', { challenge_id: challengeId, user_id: currentUser.id, status: 'pending' });
-    toast('✅ Đã nộp! Admin sẽ duyệt sớm.');
-    sendAdminNotif('challenge_submit', '🎯 Hoàn thành thử thách', (currentProfile?.full_name||'') + ' nộp: "' + title + '"', { challenge_id: challengeId, challenge_name: title });
+    // Insert completion đã approved
+    await api('POST', 'challenge_completions', { challenge_id: challengeId, user_id: currentUser.id, status: 'approved' });
+
+    // Cộng sao cho nhân viên
+    const rewardStars = ch.reward_stars || 0;
+    const newTotal = (currentProfile.total_stars||0) + rewardStars;
+    const newRedeem = (currentProfile.redeemable_points||0) + rewardStars;
+    const newRep = (currentProfile.reputation_points||0) + rewardStars;
+    await api('PATCH', 'profiles?id=eq.' + currentUser.id, {
+      total_stars: newTotal,
+      redeemable_points: newRedeem,
+      reputation_points: newRep,
+      level_name: getUserLevel(newRep).name,
+      level_icon: getUserLevel(newRep).icon
+    });
+    currentProfile.total_stars = newTotal;
+    currentProfile.redeemable_points = newRedeem;
+    currentProfile.reputation_points = newRep;
+
+    await checkAndUpdateLevel(newRep);
+    toast('🎉 Chúc mừng! +' + rewardStars + '★ đã được cộng vào tài khoản!');
     loadChallenges();
   } catch(e) {
-    if (e.message && (e.message.includes('duplicate') || e.message.includes('unique'))) {
-      toast('⏳ Bạn đã nộp rồi, đang chờ duyệt!');
-    } else {
-      toast('❌ Lỗi: ' + e.message);
-    }
+    if (e.message?.includes('duplicate') || e.message?.includes('unique')) toast('✅ Bạn đã hoàn thành thử thách này rồi!');
+    else toast('❌ Lỗi: ' + e.message);
   }
 }
 
@@ -4334,6 +4415,48 @@ function filterModalRecipient(searchId, selectId) {
   // Auto-select nếu chỉ còn 1 kết quả
   const visible = Array.from(sel.options).filter(o => o.value && o.style.display !== 'none');
   if (visible.length === 1) sel.value = visible[0].value;
+}
+
+function toggleCondValue() {
+  const type = document.getElementById('ch-cond-type').value;
+  const wrap = document.getElementById('ch-cond-value-wrap');
+  const hint = document.getElementById('ch-cond-hint');
+  const hints = {
+    manual: 'Nhân viên tự nộp bằng chứng, admin xem xét và duyệt thủ công.',
+    stars_received: 'Hệ thống tự kiểm tra: nhân viên phải nhận đủ X sao trong thời gian thử thách.',
+    stars_given: 'Hệ thống tự kiểm tra: nhân viên phải tặng đủ X sao trong thời gian thử thách.',
+    posts_made: 'Hệ thống tự kiểm tra: nhân viên phải đăng đủ X bài lời cảm ơn.',
+    people_given: 'Hệ thống tự kiểm tra: nhân viên phải tặng sao cho X người khác nhau.'
+  };
+  wrap.style.display = type === 'manual' ? 'none' : 'block';
+  hint.textContent = hints[type] || '';
+}
+
+async function checkChallengeCondition(challenge) {
+  const { condition_type, condition_value, starts_at, ends_at } = challenge;
+  if (condition_type === 'manual') return { pass: null, manual: true };
+
+  const start = starts_at || challenge.created_at;
+  const end = ends_at;
+  const uid = currentUser.id;
+
+  let count = 0;
+  if (condition_type === 'stars_received') {
+    const rows = await apiGet('recognitions?to_user_id=eq.' + uid + '&created_at=gte.' + start + '&created_at=lte.' + end + '&select=stars');
+    count = (rows||[]).reduce((s,r) => s + (r.stars||0), 0);
+  } else if (condition_type === 'stars_given') {
+    const rows = await apiGet('recognitions?from_user_id=eq.' + uid + '&created_at=gte.' + start + '&created_at=lte.' + end + '&select=stars');
+    count = (rows||[]).reduce((s,r) => s + (r.stars||0), 0);
+  } else if (condition_type === 'posts_made') {
+    const rows = await apiGet('recognitions?from_user_id=eq.' + uid + '&created_at=gte.' + start + '&created_at=lte.' + end + '&select=id&message=not.is.null');
+    count = (rows||[]).length;
+  } else if (condition_type === 'people_given') {
+    const rows = await apiGet('recognitions?from_user_id=eq.' + uid + '&created_at=gte.' + start + '&created_at=lte.' + end + '&select=to_user_id');
+    const unique = new Set((rows||[]).map(r => r.to_user_id));
+    count = unique.size;
+  }
+
+  return { pass: count >= condition_value, count, needed: condition_value, type: condition_type };
 }
 
 function showLevelInfo() {
