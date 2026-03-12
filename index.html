@@ -2601,12 +2601,10 @@ function openCompose() {
   openPostModal();
 }
 function openPostModal() {
-  // Populate people dropdown
-  const sel = document.getElementById('pm-to');
-  sel.innerHTML = '<option value="">Chọn đồng nghiệp...</option>';
-  document.getElementById('modal-to').querySelectorAll('option').forEach(o => {
-    if (o.value) sel.appendChild(o.cloneNode(true));
-  });
+  _postSelected = new Set();
+  const search = document.getElementById('pm-to-search');
+  if (search) search.value = '';
+  renderRecipientList('pm-to-list', 'pm-to-tags', _postSelected, 'post');
   document.getElementById('post-modal').classList.add('open');
 }
 function closePostModal() {
