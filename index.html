@@ -1530,6 +1530,39 @@ textarea.inf { resize:none; min-height:74px; }
   </div>
 </div>
 
+<!-- MODAL: Edit Challenge -->
+<div class="modal-bg" id="edit-challenge-modal" onclick="if(event.target===this)closeEditChallenge()" style="z-index:9999">
+  <div class="modal-box" style="width:420px;max-width:95vw">
+    <div class="mt2">✏️ Chỉnh sửa thử thách</div>
+    <input type="hidden" id="ech-id">
+    <div style="margin-bottom:10px">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;margin-bottom:5px">Tên thử thách</div>
+      <input class="inp" id="ech-title" style="width:100%;box-sizing:border-box;margin-bottom:0">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;margin-bottom:5px">Ngày kết thúc</div>
+        <input class="inp" type="date" id="ech-ends" style="width:100%;box-sizing:border-box;margin-bottom:0">
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;margin-bottom:5px">Sao thưởng</div>
+        <input class="inp" type="number" id="ech-stars" min="1" max="20" style="width:100%;box-sizing:border-box;margin-bottom:0">
+      </div>
+    </div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:10px;font-weight:800;text-transform:uppercase;margin-bottom:8px">Trạng thái</div>
+      <div style="display:flex;gap:8px">
+        <div id="ech-status-open" onclick="setEchStatus(1)" style="flex:1;padding:10px;text-align:center;border:2px solid #2D8F5A;cursor:pointer;font-weight:800;font-size:12px;background:#2D8F5A;color:#fff">✅ Đang mở</div>
+        <div id="ech-status-closed" onclick="setEchStatus(0)" style="flex:1;padding:10px;text-align:center;border:2px solid var(--grey);cursor:pointer;font-weight:800;font-size:12px">🔒 Đóng</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-outline" style="flex:1" onclick="closeEditChallenge()">Huỷ</button>
+      <button class="btn btn-black" style="flex:1" onclick="saveEditChallenge()">💾 Lưu thay đổi</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- /app -->
 
 <!-- MODAL: Tặng sao nhanh -->
@@ -1912,7 +1945,7 @@ async function loadAdminChallenges() {
   const data = await apiGet('challenges?order=created_at.desc').catch(() => []) || [];
   if (!data.length) { el.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">Chưa có thử thách nào</div>'; return; }
   el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px">'
-    + '<thead><tr style="background:var(--black);color:#fff"><th style="padding:8px;text-align:left">Thử thách</th><th style="padding:8px;text-align:center">Sao</th><th style="padding:8px;text-align:center">Loại</th><th style="padding:8px;text-align:center">Kết thúc</th><th style="padding:8px;text-align:center">Trạng thái</th><th style="padding:8px;text-align:center">Xóa</th></tr></thead>'
+    + '<thead><tr style="background:var(--black);color:#fff"><th style="padding:8px;text-align:left">Thử thách</th><th style="padding:8px;text-align:center">Sao</th><th style="padding:8px;text-align:center">Loại</th><th style="padding:8px;text-align:center">Kết thúc</th><th style="padding:8px;text-align:center">Trạng thái</th><th style="padding:8px;text-align:center">Sửa</th><th style="padding:8px;text-align:center">Xóa</th></tr></thead>'
     + '<tbody>' + data.map(ch => {
       const active = new Date(ch.ends_at) > new Date() && ch.is_active;
       return '<tr style="border-bottom:1px solid var(--bg2)">'
@@ -1921,7 +1954,7 @@ async function loadAdminChallenges() {
         + '<td style="padding:8px;text-align:center">' + (ch.type==='weekly'?'Tuần':'Tháng') + '</td>'
         + '<td style="padding:8px;text-align:center;font-size:11px">' + new Date(ch.ends_at).toLocaleDateString('vi-VN') + '</td>'
         + '<td style="padding:8px;text-align:center"><span style="font-size:10px;font-weight:800;padding:2px 7px;background:' + (active?'#2D8F5A':'var(--grey)') + ';color:#fff">' + (active?'Đang mở':'Đã đóng') + '</span></td>'
-        + '<td style="padding:8px;text-align:center"><button class="btn" style="font-size:10px;padding:3px 8px;color:var(--red);border-color:var(--red)" onclick="adminDeleteChallenge(this.dataset.id)" data-id="' + ch.id + '">Xóa</button></td>'
+        + '<td style="padding:8px;text-align:center"><button class="btn btn-outline" style="font-size:10px;padding:3px 8px" onclick="openEditChallenge(\''+ch.id+'\',\''+esc(ch.title)+'\',\''+ch.ends_at+'\','+(ch.is_active?1:0)+','+(ch.reward_stars||5)+')">✏️</button></td>'        + '<td style="padding:8px;text-align:center"><button class="btn" style="font-size:10px;padding:3px 8px;color:var(--red);border-color:var(--red)" onclick="adminDeleteChallenge(this.dataset.id)" data-id="' + ch.id + '">Xóa</button></td>'
         + '</tr>';
     }).join('') + '</tbody></table>';
 }
@@ -4415,6 +4448,60 @@ function filterModalRecipient(searchId, selectId) {
   // Auto-select nếu chỉ còn 1 kết quả
   const visible = Array.from(sel.options).filter(o => o.value && o.style.display !== 'none');
   if (visible.length === 1) sel.value = visible[0].value;
+}
+
+let _echStatus = 1;
+
+function openEditChallenge(id, title, endsAt, isActive, stars) {
+  _echStatus = isActive;
+  document.getElementById('ech-id').value = id;
+  document.getElementById('ech-title').value = title;
+  document.getElementById('ech-stars').value = stars;
+  // Format date yyyy-mm-dd
+  const d = new Date(endsAt);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  document.getElementById('ech-ends').value = yyyy + '-' + mm + '-' + dd;
+  setEchStatus(isActive);
+  document.getElementById('edit-challenge-modal').classList.add('open');
+}
+
+function setEchStatus(val) {
+  _echStatus = val;
+  const openEl = document.getElementById('ech-status-open');
+  const closedEl = document.getElementById('ech-status-closed');
+  if (val) {
+    openEl.style.background = '#2D8F5A'; openEl.style.color = '#fff'; openEl.style.borderColor = '#2D8F5A';
+    closedEl.style.background = ''; closedEl.style.color = ''; closedEl.style.borderColor = 'var(--grey)';
+  } else {
+    closedEl.style.background = 'var(--grey)'; closedEl.style.color = '#fff'; closedEl.style.borderColor = 'var(--grey)';
+    openEl.style.background = ''; openEl.style.color = ''; openEl.style.borderColor = '#2D8F5A';
+  }
+}
+
+function closeEditChallenge() {
+  document.getElementById('edit-challenge-modal').classList.remove('open');
+}
+
+async function saveEditChallenge() {
+  const id    = document.getElementById('ech-id').value;
+  const title = document.getElementById('ech-title').value.trim();
+  const ends  = document.getElementById('ech-ends').value;
+  const stars = parseInt(document.getElementById('ech-stars').value);
+  if (!title) { toast('Vui lòng nhập tên thử thách'); return; }
+  if (!ends)  { toast('Vui lòng chọn ngày kết thúc'); return; }
+  try {
+    await api('PATCH', 'challenges?id=eq.' + id, {
+      title,
+      ends_at: new Date(ends + 'T23:59:59').toISOString(),
+      is_active: !!_echStatus,
+      reward_stars: stars
+    });
+    toast('✅ Đã cập nhật thử thách!');
+    closeEditChallenge();
+    loadAdminChallenges();
+  } catch(e) { toast('❌ Lỗi: ' + e.message); }
 }
 
 function toggleCondValue() {
