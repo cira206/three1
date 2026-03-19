@@ -4082,7 +4082,7 @@ async function uploadLogo(input) {
   // Add cache-bust timestamp so browser loads fresh image
   const publicUrl = url.publicUrl + '?t=' + Date.now();
   // Save URL to settings
-  await sb.from('app_settings').upsert({ key: 'logo_url', value: publicUrl, updated_at: new Date().toISOString() });
+  await sb.from('app_settings').upsert({ key: 'logo_url', value: publicUrl, updated_at: new Date().toISOString() }, { onConflict: 'key' });
   // Update logo everywhere on page
   applyLogo(publicUrl);
   toast('✅ Đã cập nhật logo!');
@@ -4130,13 +4130,14 @@ function applyStarSymbol(sym) {
 async function saveStarEmoji() {
   const val = document.getElementById('star-emoji-input').value.trim();
   if (!val) { toast('Vui lòng nhập emoji hoặc ký tự'); return; }
-  await sb.from('app_settings').upsert({ key: 'star_symbol', value: val, updated_at: new Date().toISOString() });
+  const { error } = await sb.from('app_settings').upsert({ key: 'star_symbol', value: val, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  if (error) { toast('❌ Lỗi lưu: ' + error.message); return; }
   applyStarSymbol(val);
   toast('✅ Đã cập nhật biểu tượng sao!');
 }
 
 async function resetStarEmoji() {
-  await sb.from('app_settings').upsert({ key: 'star_symbol', value: '★', updated_at: new Date().toISOString() });
+  await sb.from('app_settings').upsert({ key: 'star_symbol', value: '★', updated_at: new Date().toISOString() }, { onConflict: 'key' });
   applyStarSymbol('★');
   document.getElementById('star-emoji-input').value = '';
   toast('↺ Đã reset về ★');
@@ -4153,7 +4154,7 @@ async function uploadStarImage(input) {
   if (error) { toast('❌ ' + error.message); return; }
   const { data: url } = sb.storage.from('logos').getPublicUrl(path);
   const publicUrl = url.publicUrl + '?t=' + Date.now();
-  await sb.from('app_settings').upsert({ key: 'star_symbol', value: publicUrl, updated_at: new Date().toISOString() });
+  await sb.from('app_settings').upsert({ key: 'star_symbol', value: publicUrl, updated_at: new Date().toISOString() }, { onConflict: 'key' });
   applyStarSymbol(publicUrl);
   toast('✅ Đã cập nhật biểu tượng sao!');
 }
@@ -4192,7 +4193,7 @@ async function uploadBanner() {
     if (error) throw error;
     const { data: url } = sb.storage.from('logos').getPublicUrl(path);
     const publicUrl = url.publicUrl + '?t=' + Date.now();
-    await sb.from('app_settings').upsert({ key: 'banner_url', value: publicUrl, updated_at: new Date().toISOString() });
+    await sb.from('app_settings').upsert({ key: 'banner_url', value: publicUrl, updated_at: new Date().toISOString() }, { onConflict: 'key' });
     applyBanner(publicUrl);
     toast('✅ Đã cập nhật banner trang chủ!');
     btn.textContent = 'Đã lưu ✓';
@@ -4204,7 +4205,7 @@ async function uploadBanner() {
 
 async function removeBanner() {
   if (!confirm('Xóa banner trang chủ?')) return;
-  await sb.from('app_settings').upsert({ key: 'banner_url', value: '', updated_at: new Date().toISOString() });
+  await sb.from('app_settings').upsert({ key: 'banner_url', value: '', updated_at: new Date().toISOString() }, { onConflict: 'key' });
   applyBanner('');
   toast('🗑 Đã xóa banner');
 }
