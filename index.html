@@ -1651,10 +1651,10 @@ textarea.inf { resize:none; min-height:74px; }
     <div style="margin-bottom:11px">
       <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:7px">Số sao tặng</div>
       <div style="display:flex;gap:6px" id="pm-stars-row">
-        <div class="so sel" data-stars="1" onclick="selPostStar(this)" style="flex:1;text-align:center" id="pstar-btn-1">1★</div>
-        <div class="so" data-stars="2" onclick="selPostStar(this)" style="flex:1;text-align:center" id="pstar-btn-2">2★</div>
-        <div class="so" data-stars="3" onclick="selPostStar(this)" style="flex:1;text-align:center" id="pstar-btn-3">3★</div>
-        <div class="so" data-stars="5" onclick="selPostStar(this)" style="flex:1;text-align:center" id="pstar-btn-5">5★</div>
+        <div class="so sel" data-stars="1" onclick="selPostStar(this)" style="flex:1;text-align:center">1★</div>
+        <div class="so" data-stars="2" onclick="selPostStar(this)" style="flex:1;text-align:center">2★</div>
+        <div class="so" data-stars="3" onclick="selPostStar(this)" style="flex:1;text-align:center">3★</div>
+        <div class="so" data-stars="5" onclick="selPostStar(this)" style="flex:1;text-align:center">5★</div>
       </div>
     </div>
     <div style="margin-bottom:11px">
@@ -2317,7 +2317,7 @@ async function loadQuota() {
   row.innerHTML = '';
   for (let i = 0; i < max; i++) {
     const used_class = i < used ? 'qs used' : 'qs';
-    row.innerHTML += `<div class="${used_class}"><span>${_starSymbol.startsWith("http")||_starSymbol.startsWith("data:") ? '<img src="'+_starSymbol+'" style="width:12px;height:12px;object-fit:contain;vertical-align:middle">' : _starSymbol}</span></div>`;
+    row.innerHTML += `<div class="${used_class}"><span>★</span></div>`;
   }
 }
 
@@ -2381,7 +2381,7 @@ function renderPost(r) {
   const from = r.from_profile;
   const to   = r.to_profile;
   if (!from || !to) return '';
-  const stars   = renderStars(r.stars);
+  const stars   = '★'.repeat(r.stars);
   const valMap  = { teamwork:'Teamwork', customer_first:'Customer First', innovation:'Innovation', ownership:'Ownership', integrity:'Integrity' };
   const valClass= { teamwork:'vt-tw', customer_first:'vt-cf', innovation:'vt-in', ownership:'vt-ow', integrity:'vt-it' };
   const ago     = timeAgo(r.created_at);
@@ -2552,7 +2552,7 @@ function renderWallPage(page) {
     const fromAvInner = r.from_profile?.avatar_url ? '<img src="'+r.from_profile.avatar_url+'" style="width:100%;height:100%;object-fit:cover">' : (r.from_profile?.avatar_text||'?');
     const toAvStyle   = r.to_profile?.avatar_url   ? 'background:transparent;overflow:hidden' : 'background:' + strToColor(r.to_profile?.full_name||'')   + ';color:#FFF;border:none';
     const toAvInner   = r.to_profile?.avatar_url   ? '<img src="'+r.to_profile.avatar_url+'" style="width:100%;height:100%;object-fit:cover">' : (r.to_profile?.avatar_text||'?');
-    const starsHtml   = '<span style="color:var(--gold);font-size:14px;letter-spacing:2px">' + renderStars(r.stars) + '</span>';
+    const starsHtml   = '<span style="color:var(--gold);font-size:14px;letter-spacing:2px">' + '★'.repeat(r.stars) + '</span>';
     const vtHtml      = r.value_tag ? '<span class="vt ' + (valClass[r.value_tag]||'') + '" style="font-size:10px">' + (valMap[r.value_tag]||r.value_tag) + '</span>' : '';
     const imgHtml = r.image_url
       ? '<div style="cursor:pointer" onclick="window.open(\'' + r.image_url + '\',\'_blank\')">'
@@ -2764,7 +2764,7 @@ async function loadProfile() {
   recEl.innerHTML = received.map(r => `
     <div style="background:var(--bg2);border-left:3px solid var(--gold);padding:11px 13px;margin-bottom:9px">
       <div style="font-size:12px;font-style:italic;margin-bottom:5px;line-height:1.6">"${esc(r.message)}"</div>
-      <div style="font-size:11px;color:var(--text3);font-weight:700">— ${esc(r.from_profile?.full_name||'?')} · ${timeAgo(r.created_at)} · ${renderStars(r.stars)}</div>
+      <div style="font-size:11px;color:var(--text3);font-weight:700">— ${esc(r.from_profile?.full_name||'?')} · ${timeAgo(r.created_at)} · ${'★'.repeat(r.stars)}</div>
     </div>`).join('');
 }
 
@@ -2840,7 +2840,7 @@ async function loadAdmin() {
       <td style="color:var(--text3)">${timeAgo(r.created_at)}</td>
       <td>${esc(r.from_profile?.full_name||'?')}</td>
       <td>${esc(r.to_profile?.full_name||'?')}</td>
-      <td style="font-weight:800;color:var(--gold)">${renderStars(r.stars)}</td>
+      <td style="font-weight:800;color:var(--gold)">${'★'.repeat(r.stars)}</td>
       <td>${r.value_tag}</td>
     </tr>`).join('');
 }
@@ -3269,7 +3269,7 @@ async function updateTicker() {
   if (!data?.length) return;
   const el = document.getElementById('ticker-text');
   el.innerHTML = data.map(r =>
-    `<b>${(r.from_profile?.full_name||'?').toUpperCase()}</b> tặng ${renderStars(r.stars)} cho <b>${(r.to_profile?.full_name||'?').toUpperCase()}</b> &nbsp;•&nbsp; `
+    `<b>${(r.from_profile?.full_name||'?').toUpperCase()}</b> tặng ${'★'.repeat(r.stars)} cho <b>${(r.to_profile?.full_name||'?').toUpperCase()}</b> &nbsp;•&nbsp; `
   ).join('');
 }
 
@@ -3721,7 +3721,7 @@ async function viewEmployee(uid) {
     recEl.innerHTML = recs.map(r => `
       <div style="background:var(--bg2);border-left:3px solid var(--gold);padding:8px 11px;margin-bottom:6px;font-size:12px">
         <div style="font-style:italic;margin-bottom:3px">"${esc(r.message)}"</div>
-        <div style="color:var(--text3);font-size:11px">— ${esc(r.from_profile?.full_name||'?')} · ${renderStars(r.stars)}</div>
+        <div style="color:var(--text3);font-size:11px">— ${esc(r.from_profile?.full_name||'?')} · ${'★'.repeat(r.stars)}</div>
       </div>`).join('');
   }
 
@@ -3778,7 +3778,7 @@ async function viewProfile(uid) {
       const d = document.createElement('div');
       d.style.cssText = 'background:var(--bg2);border-left:3px solid var(--gold);padding:8px 11px;margin-bottom:6px;font-size:12px';
       d.innerHTML = '<div style="font-style:italic;margin-bottom:3px">"' + esc(r.message) + '"</div>' +
-        '<div style="color:var(--text3);font-size:11px">— ' + esc(r.from_profile?.full_name||'?') + ' · ' + renderStars(r.stars) + '</div>';
+        '<div style="color:var(--text3);font-size:11px">— ' + esc(r.from_profile?.full_name||'?') + ' · ' + '★'.repeat(r.stars) + '</div>';
       recEl.appendChild(d);
     });
   }
@@ -3858,7 +3858,7 @@ async function loadHistory() {
       <td style="color:var(--text3)">${timeAgo(r.created_at)}</td>
       <td>${esc(r.from_profile?.full_name||'?')}</td>
       <td>${esc(r.to_profile?.full_name||'?')}</td>
-      <td style="font-weight:800;color:var(--gold)">${renderStars(r.stars)}</td>
+      <td style="font-weight:800;color:var(--gold)">${'★'.repeat(r.stars)}</td>
       <td>${r.value_tag}</td>
     </tr>`).join('');
 }
@@ -4082,7 +4082,7 @@ async function uploadLogo(input) {
   // Add cache-bust timestamp so browser loads fresh image
   const publicUrl = url.publicUrl + '?t=' + Date.now();
   // Save URL to settings
-  await sb.from('app_settings').upsert({ key: 'logo_url', value: publicUrl, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  await sb.from('app_settings').upsert({ key: 'logo_url', value: publicUrl, updated_at: new Date().toISOString() });
   // Update logo everywhere on page
   applyLogo(publicUrl);
   toast('✅ Đã cập nhật logo!');
@@ -4112,7 +4112,7 @@ let _starSymbol = '★'; // default
 function applyStarSymbol(sym) {
   if (!sym) return;
   _starSymbol = sym;
-  const isImg = sym.startsWith('http') || sym.startsWith('data:');
+  const isImg = sym.startsWith('http');
   const symHtml = isImg ? '<img src="'+sym+'" style="width:18px;height:18px;object-fit:contain;vertical-align:middle">' : sym;
   // Update preview trong admin
   const prev = document.getElementById('star-emoji-preview');
@@ -4120,27 +4120,23 @@ function applyStarSymbol(sym) {
   // Update input
   const inp = document.getElementById('star-emoji-input');
   if (inp && !isImg) inp.value = sym;
-  // Update star buttons trong give modal và post modal
+  // Update star buttons trong give modal
   [1,2,3,5].forEach(n => {
-    const symStr = isImg ? symHtml.replace('18px;height:18px', '14px;height:14px') : sym;
-    const btn1 = document.getElementById('star-btn-'+n);
-    if (btn1) btn1.innerHTML = n + symStr;
-    const btn2 = document.getElementById('pstar-btn-'+n);
-    if (btn2) btn2.innerHTML = n + symStr;
+    const btn = document.getElementById('star-btn-'+n);
+    if (btn) btn.innerHTML = n + symHtml;
   });
 }
 
 async function saveStarEmoji() {
   const val = document.getElementById('star-emoji-input').value.trim();
   if (!val) { toast('Vui lòng nhập emoji hoặc ký tự'); return; }
-  const { error } = await sb.from('app_settings').upsert({ key: 'star_symbol', value: val, updated_at: new Date().toISOString() }, { onConflict: 'key' });
-  if (error) { toast('❌ Lỗi lưu: ' + error.message); return; }
+  await sb.from('app_settings').upsert({ key: 'star_symbol', value: val, updated_at: new Date().toISOString() });
   applyStarSymbol(val);
   toast('✅ Đã cập nhật biểu tượng sao!');
 }
 
 async function resetStarEmoji() {
-  await sb.from('app_settings').upsert({ key: 'star_symbol', value: '★', updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  await sb.from('app_settings').upsert({ key: 'star_symbol', value: '★', updated_at: new Date().toISOString() });
   applyStarSymbol('★');
   document.getElementById('star-emoji-input').value = '';
   toast('↺ Đã reset về ★');
@@ -4157,13 +4153,13 @@ async function uploadStarImage(input) {
   if (error) { toast('❌ ' + error.message); return; }
   const { data: url } = sb.storage.from('logos').getPublicUrl(path);
   const publicUrl = url.publicUrl + '?t=' + Date.now();
-  await sb.from('app_settings').upsert({ key: 'star_symbol', value: publicUrl, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  await sb.from('app_settings').upsert({ key: 'star_symbol', value: publicUrl, updated_at: new Date().toISOString() });
   applyStarSymbol(publicUrl);
   toast('✅ Đã cập nhật biểu tượng sao!');
 }
 
 function renderStars(count) {
-  if (_starSymbol.startsWith('http') || _starSymbol.startsWith('data:')) {
+  if (_starSymbol.startsWith('http')) {
     return '<img src="'+_starSymbol+'" style="width:16px;height:16px;object-fit:contain;vertical-align:middle">'.repeat(count);
   }
   return _starSymbol.repeat(count);
@@ -4196,7 +4192,7 @@ async function uploadBanner() {
     if (error) throw error;
     const { data: url } = sb.storage.from('logos').getPublicUrl(path);
     const publicUrl = url.publicUrl + '?t=' + Date.now();
-    await sb.from('app_settings').upsert({ key: 'banner_url', value: publicUrl, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    await sb.from('app_settings').upsert({ key: 'banner_url', value: publicUrl, updated_at: new Date().toISOString() });
     applyBanner(publicUrl);
     toast('✅ Đã cập nhật banner trang chủ!');
     btn.textContent = 'Đã lưu ✓';
@@ -4208,7 +4204,7 @@ async function uploadBanner() {
 
 async function removeBanner() {
   if (!confirm('Xóa banner trang chủ?')) return;
-  await sb.from('app_settings').upsert({ key: 'banner_url', value: '', updated_at: new Date().toISOString() }, { onConflict: 'key' });
+  await sb.from('app_settings').upsert({ key: 'banner_url', value: '', updated_at: new Date().toISOString() });
   applyBanner('');
   toast('🗑 Đã xóa banner');
 }
