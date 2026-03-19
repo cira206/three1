@@ -3128,10 +3128,11 @@ async function submitPost() {
 }
 
 async function sendGift() {
-  const toId   = document.getElementById('modal-to').value;
+  const toIds  = [..._giveSelected];
+  const toId   = toIds[0] || '';
   const msg    = document.getElementById('modal-msg').value.trim();
   const starEl = document.querySelector('#give-modal .so.sel');
-  if (!toId) { toast('Vui lòng chọn người nhận'); return; }
+  if (!toIds.length) { toast('Vui lòng chọn người nhận'); return; }
 
   const stars = parseInt(starEl?.dataset.stars || '1');
   const btn   = document.getElementById('btn-give');
