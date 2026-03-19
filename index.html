@@ -93,6 +93,13 @@ body{font-family:var(--F);background:var(--bg);color:var(--text);min-height:100v
 
 /* ── PAGES ── */
 .page { display:none; flex:1; overflow-y:auto; padding:24px 26px; }
+  /* PAGINATION */
+  .pag-wrap { display:flex;align-items:center;justify-content:center;gap:6px;margin-top:18px;padding-bottom:8px;flex-wrap:wrap }
+  .pag-btn { min-width:32px;height:32px;padding:0 8px;border:1.5px solid var(--black);background:#fff;font-size:12px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center }
+  .pag-btn:hover { background:var(--black);color:#fff }
+  .pag-btn.active { background:var(--black);color:#fff }
+  .pag-btn:disabled { opacity:.35;cursor:default;pointer-events:none }
+  .pag-info { font-size:11px;color:var(--text3);font-weight:600 }
   #home-banner-wrap { margin-left:-26px; margin-right:-26px; margin-top:-24px; margin-bottom:16px; }
   @media(max-width:600px) { #home-banner-wrap { margin-left:-14px; margin-right:-14px; margin-top:-14px; } #home-banner-img { max-height:160px; } }
 .page.active { display:block; }
@@ -2171,6 +2178,37 @@ function go(id) {
 // LOAD EMPLOYEES (for dropdowns)
 // ═══════════════════════════════════════════════
 let _allRecipients = [];
+
+// ═══════════════════════════════════════════════
+// PAGINATION ENGINE
+// ═══════════════════════════════════════════════
+const PAGE_SIZE = 20;
+const _pages = {}; // { feedPage, lbPage, wallPage, challengePage, storePage }
+
+function renderPagination(containerId, page, total, onPageChange) {
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  if (totalPages <= 1) return '';
+  const start = (page - 1) * PAGE_SIZE + 1;
+  const end = Math.min(page * PAGE_SIZE, total);
+
+  let btns = '';
+  // Prev
+  btns += '<button class="pag-btn" ' + (page===1?'disabled':'onclick="'+onPageChange+'('+(page-1)+')"') + '>‹</button>';
+  // Pages
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= page-2 && i <= page+2)) {
+      btns += '<button class="pag-btn' + (i===page?' active':'') + '" onclick="' + onPageChange + '(' + i + ')">' + i + '</button>';
+    } else if (i === page-3 || i === page+3) {
+      btns += '<span class="pag-info">…</span>';
+    }
+  }
+  // Next
+  btns += '<button class="pag-btn" ' + (page===totalPages?'disabled':'onclick="'+onPageChange+'('+(page+1)+')"') + '>›</button>';
+
+  return '<div class="pag-wrap">' + btns + '<span class="pag-info">' + start + '-' + end + ' / ' + total + '</span></div>';
+}
+
+
 let _challengesCache = {};
 let _giveSelected = new Set(); // selected ids cho give modal
 let _postSelected = new Set(); // selected ids cho post modal
@@ -2256,7 +2294,7 @@ async function loadFeed() {
   const fl = document.getElementById('fl');
   fl.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
 
-  const recs = await apiGet('recognitions?select=*,from_profile:profiles!from_user_id(full_name,avatar_text,department),to_profile:profiles!to_user_id(full_name,avatar_text,department)&order=created_at.desc&limit=30').catch(() => null);
+  const recs = await apiGet('recognitions?select=*,from_profile:profiles!from_user_id(full_name,avatar_text,department,avatar_url),to_profile:profiles!to_user_id(full_name,avatar_text,department,avatar_url)&order=created_at.desc&limit=500').catch(() => null);
   const error = null;
 
   if (error || !recs?.length) {
@@ -2290,7 +2328,19 @@ async function loadFeed() {
   const rankEl = document.getElementById('stat-rank');
   if (rankEl) rankEl.textContent = (currentProfile.total_stars || 0) > 0 ? (currentProfile.total_stars) + '★ tích lũy' : 'Chưa có sao';
 
-  fl.innerHTML = recs.map(r => renderPost(r)).join('');
+  _pages.feedData = recs;
+  _pages.feedPage = _pages.feedPage || 1;
+  renderFeedPage(_pages.feedPage);
+}
+
+function renderFeedPage(page) {
+  _pages.feedPage = page;
+  const recs = _pages.feedData || [];
+  const fl = document.getElementById('fl');
+  const start = (page-1) * PAGE_SIZE;
+  const slice = recs.slice(start, start + PAGE_SIZE);
+  fl.innerHTML = slice.map(r => renderPost(r)).join('') 
+    + renderPagination('fl', page, recs.length, 'renderFeedPage');
 }
 
 function renderPost(r) {
@@ -2378,7 +2428,7 @@ async function loadLeaderboard() {
   const lbBodyEl   = document.getElementById('lb-body');
   if (lbPodiumEl) lbPodiumEl.innerHTML = '<div class="loading" style="height:120px;flex:1"><div class="spinner"></div></div>';
   
-  const { data, error } = await sb.rpc('get_leaderboard', { p_limit: 20, p_branch: currentBranchFilter || null });
+  const { data, error } = await sb.rpc('get_leaderboard', { p_limit: 500, p_branch: currentBranchFilter || null });
   if (error) { toast('❌ Lỗi tải BXH: ' + error.message); return; }
   if (!data?.length) {
     if (lbPodiumEl) lbPodiumEl.innerHTML = '<div class="loading" style="height:120px;flex:1"><div style="color:var(--text3);font-size:12px">Chưa có dữ liệu</div></div>';
@@ -2411,15 +2461,30 @@ async function loadLeaderboard() {
       </div>` : '').join('');
   }
 
-  // Table
-  document.getElementById('lb-body').innerHTML = data.map((p,i) => `
+  // Table with pagination
+  _pages.lbData = data;
+  _pages.lbPage = 1;
+  renderLbPage(1);
+}
+
+function renderLbPage(page) {
+  _pages.lbPage = page;
+  const data = _pages.lbData || [];
+  const start = (page-1) * PAGE_SIZE;
+  const slice = data.slice(start, start + PAGE_SIZE);
+  const startRank = start; // rank offset
+  const lbWrap = document.getElementById('lb-body');
+  lbWrap.innerHTML = slice.map((p,i) => `
     <tr style="cursor:pointer" onclick="viewProfile('${p.user_id}')">
-      <td><strong style="color:${i===0?'var(--gold)':'var(--grey)'}">${i===0?'👑':i+1}</strong></td>
+      <td><strong style="color:${startRank+i===0?'var(--gold)':'var(--grey)'}">${startRank+i===0?'👑':startRank+i+1}</strong></td>
       <td><div style="display:flex;align-items:center;gap:9px"><div class="av" style="width:28px;height:28px;font-size:10px;background:${strToColor(p.full_name)};color:#FFF;border:none">${p.avatar_text||'?'}</div><strong>${esc(p.full_name)}</strong></div></td>
       <td><span style="background:var(--bg2);padding:2px 8px;font-size:11px;font-weight:700;border:1px solid var(--border-soft)">${esc(p.department)}</span></td>
       <td style="font-weight:800;color:var(--gold)">${p.stars_this_month}</td>
       <td>${p.post_count_month}</td>
     </tr>`).join('');
+  // Pagination bên dưới table
+  const lbPage = document.getElementById('lb-pagination');
+  if (lbPage) lbPage.innerHTML = renderPagination('lb-pagination', page, data.length, 'renderLbPage');
 }
 
 // ═══════════════════════════════════════════════
@@ -2430,27 +2495,50 @@ async function loadWall() {
     .from('recognitions')
     .select(`*, from_profile:profiles!from_user_id(full_name,avatar_text,avatar_url), to_profile:profiles!to_user_id(full_name,avatar_text,avatar_url)`)
     .order('created_at', { ascending: false })
-    .limit(30);
+    .limit(500);
   const el = document.getElementById('wall-grid');
   if (!data?.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">◉</div><div class="empty-txt">Chưa có nội dung</div></div>'; return; }
   const valMap  = { teamwork:'TW', customer_first:'CF', innovation:'IN', ownership:'OW', integrity:'IT' };
   const valClass= { teamwork:'vt-tw', customer_first:'vt-cf', innovation:'vt-in', ownership:'vt-ow', integrity:'vt-it' };
-  el.innerHTML = data.map(r => {
+  _pages.wallData = data;
+  _pages.wallPage = 1;
+  renderWallPage(1);
+}
+
+function renderWallPage(page) {
+  _pages.wallPage = page;
+  const data = _pages.wallData || [];
+  const el = document.getElementById('wall-grid');
+  const start = (page-1) * PAGE_SIZE;
+  const slice = data.slice(start, start + PAGE_SIZE);
+  const valMap   = { teamwork:'TW', customer_first:'CF', innovation:'IN', ownership:'OW', integrity:'IT' };
+  const valClass = { teamwork:'vt-tw', customer_first:'vt-cf', innovation:'vt-in', ownership:'vt-ow', integrity:'vt-it' };
+  el.innerHTML = slice.map(r => {
     const fromAvStyle = r.from_profile?.avatar_url ? 'background:transparent;overflow:hidden' : 'background:' + strToColor(r.from_profile?.full_name||'') + ';color:#FFF;border:none';
-    const fromAvInner = r.from_profile?.avatar_url ? '<img src="'+r.from_profile.avatar_url+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : (r.from_profile?.avatar_text||'?');
-    return `
-    <div style="background:#FFF;border:1.5px solid var(--border-soft);border-top:3px solid var(--black);padding:14px;margin-bottom:12px;break-inside:avoid">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-        <div class="av" style="width:22px;height:22px;font-size:9px;${fromAvStyle};cursor:pointer" onclick="viewProfile('${r.from_user_id}')">${fromAvInner}</div>
-        <div style="font-size:11px;font-weight:700"><span style="cursor:pointer" onclick="viewProfile('${r.from_user_id}')">${esc(r.from_profile?.full_name||'?')}</span> <span style="color:var(--gold)">→</span> <span style="cursor:pointer" onclick="viewProfile('${r.to_user_id}')">${esc(r.to_profile?.full_name||'?')}</span></div>
-        <span class="vtag ${valClass[r.value_tag]||'vt-tw'}" style="margin-left:auto;font-size:9px">${valMap[r.value_tag]||'?'}</span>
+    const fromAvInner = r.from_profile?.avatar_url ? '<img src="'+r.from_profile.avatar_url+'" style="width:100%;height:100%;object-fit:cover">' : (r.from_profile?.avatar_text||'?');
+    const toAvStyle   = r.to_profile?.avatar_url   ? 'background:transparent;overflow:hidden' : 'background:' + strToColor(r.to_profile?.full_name||'')   + ';color:#FFF;border:none';
+    const toAvInner   = r.to_profile?.avatar_url   ? '<img src="'+r.to_profile.avatar_url+'"   style="width:100%;height:100%;object-fit:cover">' : (r.to_profile?.avatar_text||'?');
+    return `<div class="wc">
+      ${r.image_url ? `<div style="margin:-14px -14px 10px;overflow:hidden;max-height:160px"><img src="${r.image_url}" style="width:100%;object-fit:cover"></div>` : ''}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:7px;cursor:pointer" onclick="viewProfile('${r.from_user_id}')">
+          <div class="av" style="width:30px;height:30px;font-size:11px;${fromAvStyle}">${fromAvInner}</div>
+          <div><div style="font-size:11px;font-weight:800">${esc(r.from_profile?.full_name||'')}</div><div style="font-size:9px;color:var(--text3)">Gửi đến</div></div>
+        </div>
+        <div style="font-size:18px;color:var(--gold)">→</div>
+        <div style="display:flex;align-items:center;gap:7px;cursor:pointer" onclick="viewProfile('${r.to_user_id}')">
+          <div><div style="font-size:11px;font-weight:800;text-align:right">${esc(r.to_profile?.full_name||'')}</div><div style="font-size:9px;color:var(--text3);text-align:right">Nhận</div></div>
+          <div class="av" style="width:30px;height:30px;font-size:11px;${toAvStyle}">${toAvInner}</div>
+        </div>
       </div>
-      <div style="font-size:13px;line-height:1.65;font-style:italic;margin-bottom:8px">"${esc(r.message)}"</div>
+      ${r.message ? `<div style="font-size:12px;font-style:italic;color:var(--text2);margin-bottom:8px;padding:8px;background:var(--bg2)">"${esc(r.message)}"</div>` : ''}
+      ${r.value_tag ? `<span class="vt ${valClass[r.value_tag]||''}">${valMap[r.value_tag]||r.value_tag}</span>` : ''}
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div style="font-size:10px;color:var(--text3)">${timeAgo(r.created_at)}</div>
         <div style="font-size:11px;font-weight:800;color:var(--gold);text-transform:uppercase;letter-spacing:.04em">${'★'.repeat(r.stars)}</div>
       </div>
-    </div>`;}).join('');
+    </div>`;
+  }).join('') + renderPagination('wall-grid', page, data.length, 'renderWallPage');
 }
 
 // ═══════════════════════════════════════════════
@@ -2466,27 +2554,10 @@ async function loadChallenges() {
   const myMap = {};
   myComps.forEach(x => { myMap[x.challenge_id] = x.status; });
 
-  el.innerHTML = data.map(ch => {
-    const daysLeft = Math.max(0, Math.ceil((new Date(ch.ends_at) - new Date()) / 86400000));
-    const active = daysLeft > 0;
-    const myStatus = myMap[ch.id];
-    let btnHtml = '';
-    if (!active) {
-      btnHtml = '<div style="text-align:center;padding:8px;font-size:11px;color:var(--text3);font-weight:700">Đã kết thúc</div>';
-    } else if (myStatus === 'approved') {
-      btnHtml = '<div style="text-align:center;padding:8px;font-size:12px;color:#2D8F5A;font-weight:800">✅ Đã hoàn thành · Nhận thưởng</div>';
-    } else if (myStatus === 'pending') {
-      btnHtml = '<div style="text-align:center;padding:8px;font-size:11px;color:var(--gold);font-weight:700">⏳ Chờ admin duyệt</div>';
-    } else if (myStatus === 'rejected') {
-      btnHtml = '<button class="btn btn-black" style="width:100%;margin-top:8px" onclick="submitChallenge(\'' + ch.id + '\',\'' + esc(ch.title) + '\')">🔄 Nộp lại</button>';
-    } else {
-      btnHtml = '<button class="btn btn-black" style="width:100%;margin-top:8px" onclick="submitChallenge(\'' + ch.id + '\',\'' + esc(ch.title) + '\')">✓ Hoàn thành</button>';
-    }
-    const condLabels = { manual:'📋 Thủ công', stars_received:'⭐ Tự động', stars_given:'🎁 Tự động', posts_made:'✍️ Tự động', people_given:'👥 Tự động' };
-  const condDesc = { manual:'Admin duyệt', stars_received:'Nhận đủ ' + (ch.condition_value||0) + '★', stars_given:'Tặng đủ ' + (ch.condition_value||0) + '★', posts_made:'Đăng đủ ' + (ch.condition_value||0) + ' bài', people_given:'Tặng ' + (ch.condition_value||0) + ' người' };
-  const cType = ch.condition_type || 'manual';
-  return '<div class="cc">' + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' + '<span style="font-size:20px">' + (ch.emoji||'🎯') + '</span>' + '<div style="display:flex;gap:4px;align-items:center"><span style="font-size:9px;font-weight:800;padding:2px 6px;background:' + (cType==='manual'?'#888':'#2D6FAD') + ';color:#fff">' + (condLabels[cType]||'') + '</span><span style="font-size:10px;font-weight:800;letter-spacing:.08em;padding:2px 8px;background:' + (active?'#2D8F5A':'var(--grey)') + ';color:#fff">' + (active?'ĐANG MỞ':'KẾT THÚC') + '</span></div></div>' + '<div class="cname">' + esc(ch.title) + '</div>' + '<div class="cdesc">' + esc(ch.description) + '</div>' + '<div class="crew" style="margin:8px 0">Thưởng: <span>+' + ch.reward_stars + '★</span> · ' + (ch.type==='weekly'?'Tuần':'Tháng') + '</div>' + '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">⏰ ' + (active ? 'Còn ' + daysLeft + ' ngày' : 'Đã kết thúc') + '</div>' + btnHtml + '</div>';
-  }).join('');
+  _pages.chalData = data;
+  _pages.chalPage = 1;
+  _pages.chalMyComps = myComps;
+  renderChalPage(1);
 }
 
 async function submitChallenge(challengeId, title) {
@@ -4620,6 +4691,47 @@ async function checkAndUpdateLevel(newPoints) {
 // ═══════════════════════════════════════════════
 // STORE — CỬA HÀNG ĐỔI QUÀ
 // ═══════════════════════════════════════════════
+function renderChalPage(page) {
+  _pages.chalPage = page;
+  const data = _pages.chalData || [];
+  const myComps = _pages.chalMyComps || [];
+  const el = document.getElementById('challenges-grid');
+  const start = (page-1) * PAGE_SIZE;
+  const slice = data.slice(start, start + PAGE_SIZE);
+  el.innerHTML = slice.map(ch => {
+    const daysLeft = Math.max(0, Math.ceil((new Date(ch.ends_at) - new Date()) / 86400000));
+    const active = new Date(ch.ends_at) > new Date() && ch.is_active;
+    const myStatus = myComps.find(mc => mc.challenge_id === ch.id)?.status;
+    _challengesCache[ch.id] = ch;
+    let btnHtml = '';
+    if (!active) {
+      btnHtml = '<div style="font-size:11px;color:var(--text3);margin-top:8px;text-align:center">Đã kết thúc</div>';
+    } else if (myStatus === 'approved') {
+      btnHtml = '<div style="font-size:11px;color:#2D8F5A;font-weight:700;margin-top:8px;text-align:center">✅ Đã hoàn thành</div>';
+    } else if (myStatus === 'pending') {
+      btnHtml = '<div style="font-size:11px;color:var(--gold);font-weight:700;margin-top:8px">⏳ Chờ admin duyệt</div>';
+    } else if (myStatus === 'rejected') {
+      btnHtml = '<button class="btn btn-black" style="width:100%;margin-top:8px" onclick="submitChallenge(\'' + ch.id + '\',\'' + esc(ch.title) + '\')">🔄 Nộp lại</button>';
+    } else {
+      btnHtml = '<button class="btn btn-black" style="width:100%;margin-top:8px" onclick="submitChallenge(\'' + ch.id + '\',\'' + esc(ch.title) + '\')">✓ Hoàn thành</button>';
+    }
+    const condLabels = { manual:'📋 Thủ công', stars_received:'⭐ Tự động', stars_given:'🎁 Tự động', posts_made:'✍️ Tự động', people_given:'👥 Tự động' };
+    const condDesc = { manual:'Admin duyệt', stars_received:'Nhận đủ '+(ch.condition_value||0)+'★', stars_given:'Tặng đủ '+(ch.condition_value||0)+'★', posts_made:'Đăng đủ '+(ch.condition_value||0)+' bài', people_given:'Tặng '+(ch.condition_value||0)+' người' };
+    const cType = ch.condition_type || 'manual';
+    return '<div class="cc">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+      + '<span style="font-size:20px">'+(ch.emoji||'🎯')+'</span>'
+      + '<div style="display:flex;gap:4px;align-items:center"><span style="font-size:9px;font-weight:800;padding:2px 6px;background:'+(cType==='manual'?'#888':'#2D6FAD')+';color:#fff">'+(condLabels[cType]||'')+'</span>'
+      + '<span style="font-size:10px;font-weight:800;letter-spacing:.08em;padding:2px 8px;background:'+(active?'#2D8F5A':'var(--grey)')+';color:#fff">'+(active?'ĐANG MỞ':'KẾT THÚC')+'</span></div></div>'
+      + '<div class="cct">'+(ch.emoji||'🎯')+' '+esc(ch.title)+'</div>'
+      + '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">Điều kiện: '+(condDesc[cType]||'')+'</div>'
+      + '<div class="cdesc">'+esc(ch.description)+'</div>'
+      + '<div class="crew" style="margin:8px 0">Thưởng: <span>+'+ch.reward_stars+'★</span> · '+(ch.type==='weekly'?'Tuần':'Tháng')+'</div>'
+      + '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">⏰ '+(active?'Còn '+daysLeft+' ngày':'Đã kết thúc')+'</div>'
+      + btnHtml + '</div>';
+  }).join('') + renderPagination('challenges-grid', page, data.length, 'renderChalPage');
+}
+
 let storeRewards = [];
 let storeCurrentFilter = 'all';
 
@@ -4658,6 +4770,11 @@ async function loadStore() {
 
 const CATEGORY_LABELS = { drink_voucher:'☕ Đồ Uống · 50★', merchandise:'🎁 Tặng Phẩm · 200★', privilege:'⭐ Quyền Lợi Lớn · 350★' };
 
+function storeGoPage(page) {
+  _pages.storePage = page;
+  renderStoreGrid(_pages.storeCat || 'all');
+}
+
 function filterStore(cat, skipTabUpdate) {
   storeCurrentFilter = cat;
   // Update tab styles
@@ -4673,7 +4790,7 @@ function filterStore(cat, skipTabUpdate) {
   const isHistory = cat === 'history';
   document.getElementById('store-view-main').style.display    = isHistory ? 'none' : 'block';
   document.getElementById('store-view-history').style.display = isHistory ? 'block' : 'none';
-  if (!isHistory) renderStoreGrid(cat);
+  if (!isHistory) { _pages.storePage = 1; renderStoreGrid(cat); }
 }
 
 function renderStoreGrid(cat) {
@@ -4696,8 +4813,13 @@ function renderStoreGrid(cat) {
       html += groupItems.map(r => storeItemHTML(r, bal)).join('');
     });
   } else {
-    html = items.map(r => storeItemHTML(r, bal)).join('');
+    const start = ((_pages.storePage||1)-1) * PAGE_SIZE;
+    const slice = items.slice(start, start + PAGE_SIZE);
+    html = slice.map(r => storeItemHTML(r, bal)).join('');
+    html += renderPagination('store-grid', _pages.storePage||1, items.length, 'storeGoPage');
   }
+  _pages.storeItems = items;
+  _pages.storeCat = cat;
   grid.innerHTML = html;
 }
 
